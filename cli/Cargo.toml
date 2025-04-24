@@ -6,3 +6,4 @@ authors = ["Lukas Drobek"]
 description = "Interactive CLI application for an Arduino-based password vault"
 
 [dependencies]
+serialport="4.7.1"
