@@ -2,7 +2,13 @@
 use std::io::{self, BufRead, BufReader, Write};
 use std::time::Duration;
 
-fn main() -> std::io::Result<()> {
+use aes_gcm::{
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+    Aes256Gcm, Key
+};
+use argon2::Argon2;
+
+fn test_connection() -> io::Result<()> {
     let ports = serialport::available_ports()?;
     let port_name = ports
         .into_iter()
@@ -45,6 +51,82 @@ fn main() -> std::io::Result<()> {
         };
 
         println!("Arduino reponse: {}", num);
+    }
+
+    Ok(())
+}
+
+fn test_argon() -> io::Result<()> {
+    let argon2 = Argon2::default();
+    let password = b"net123";
+    // random salt (saved on SD card in the future)
+    let salt = b"some salt";
+    
+    print!("Please enter your password: ");
+    io::stdout().flush()?;
+    let mut input_password = String::new();
+    std::io::stdin().read_line(&mut input_password)?;
+    let input_password = input_password.trim();
+    
+    let mut master_key = [0u8; 32];
+    let mut input_master_key = [0u8; 32];
+
+    // generate master key (saved on ATECC608 in the future)
+    argon2
+        .hash_password_into(password, salt, &mut master_key)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    // derive key from user input
+    argon2
+        .hash_password_into(input_password.as_bytes(), salt, &mut input_master_key)
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    if master_key == input_master_key {
+        println!("> OK: KEYS MATCH!");
+    }
+    else {
+        println!("> ERROR: KEYS DO NOT MATCH!");
+    }
+    println!("Master key: {:02x?}", master_key);
+    println!("Derived key: {:02x?}", input_master_key);
+
+    Ok(())
+}
+
+fn test_aes256gcm() -> io::Result<()> {
+    let derived_key= b"some_derived_key_123456789012345";
+    let key = Key::<Aes256Gcm>::from_slice(derived_key);
+    let cipher = Aes256Gcm::new(&key);
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+
+    let cipher_text = cipher
+        .encrypt(&nonce, b"plaintext message".as_ref())
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    let plain_text = cipher
+        .decrypt(&nonce, cipher_text.as_ref())
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+
+    let plain_text_str = String::from_utf8(plain_text)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+
+    println!("Decrypted text: {:?}", plain_text_str);
+
+    Ok(())
+}
+
+fn main() -> io::Result<()> {
+    let test_num = 0;
+
+    // avoid unused function warnings
+    if test_num == 1 {
+        test_connection()?; 
+    }
+    if test_num == 2 {
+        test_argon()?;
+    }
+    if test_num == 3 {
+        test_aes256gcm()?;
     }
 
     Ok(())       

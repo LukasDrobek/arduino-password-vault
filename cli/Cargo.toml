@@ -7,3 +7,5 @@ description = "Interactive CLI application for an Arduino-based password vault"
 
 [dependencies]
 serialport="4.7.1"
+argon2="0.5.3"
+aes-gcm="0.10.3"
