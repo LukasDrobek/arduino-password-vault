@@ -1,7 +1,10 @@
 // use serialport::SerialPort;
 use std::io::{self, Write};
 
+mod vault;
 mod test_file;
+
+use vault::Vault;
 
 const APP_NAME: &str = "arduino-password-vault";
 const APP_VERSION: &str = "0.1.0";
@@ -27,37 +30,66 @@ fn main() -> io::Result<()> {
     println!("Welcome to {} v{}!", APP_NAME, APP_VERSION);
     println!("Type 'help' to list commands or 'exit' to quit.");
 
+    let mut vault = Vault::new();
+
     loop {
         print!("> ");
         io::stdout().flush()?;
 
-        let mut command = String::new();
-        io::stdin().read_line(&mut command)?;
-        let command = command.trim();
+        let mut line = String::new();
+        io::stdin().read_line(&mut line)?;
+        let parts: Vec<&str> = line.trim().split_whitespace().collect();
 
-        match command {
-            "exit" => {
-                println!("Shutting down...");
+        match parts.as_slice() {
+            ["add", service, username, password] => {
+                vault.add_entry(
+                    service.to_string(),
+                    username.to_string(),
+                    password.to_string());
+            }
+            ["add", ..] => {
+                println!("Usage: add <service> <username> <password>");
+            }
+
+            ["list"] => {
+                vault.list_all_entries();
+            }
+
+            ["find", service] => {
+                vault.find_entries(service.to_string());
+            }
+            ["find", ..] => {
+                println!("Usage: find <service>");
+            }
+
+            ["get", service, username] => {
+                vault.get_password(
+                    service.to_string(),
+                    username.to_string());
+            }
+            ["get", ..] => {
+                println!("Usage: get <service> <username>");
+            }
+
+            ["help"] => {
+                println!("Available commands:");
+                println!("\tadd <service> <username> <password>");
+                println!("\tlist");
+                println!("\tfind <service>");
+                println!("\tget <service> <username>");
+                println!("\thelp");
+                println!("\texit");
+            }
+
+            ["exit"] => {
                 break;
             }
-            "help" => {
-                println!("add <name>");
-                println!("list <name>");
-                println!("exit");
-            }
-            "add" => {
-                println!("Adding password...");
-            }
-            "list" => {
-                println!("Listing passwords...");
-            }
+
             _ => {
-                println!("Invalid command '{}'", command);
+                println!("Invalid command - type 'help' to see available commands");
             }
         }
-
     }
 
-    println!("See you soon!");
     Ok(())
 }
