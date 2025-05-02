@@ -1,133 +1,63 @@
 // use serialport::SerialPort;
-use std::io::{self, BufRead, BufReader, Write};
-use std::time::Duration;
+use std::io::{self, Write};
 
-use aes_gcm::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-    Aes256Gcm, Key
-};
-use argon2::Argon2;
+mod test_file;
 
-fn test_connection() -> io::Result<()> {
-    let ports = serialport::available_ports()?;
-    let port_name = ports
-        .into_iter()
-        .find(|p| p.port_name.contains("ttyACM") || p.port_name.contains("ttyUSB"))
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Arduino not found"))?
-        .port_name;
+const APP_NAME: &str = "arduino-password-vault";
+const APP_VERSION: &str = "0.1.0";
 
-    println!("Using port {}", port_name);
-
-    let mut port = serialport::new(port_name, 115200)
-        .timeout(Duration::from_millis(1000))
-        .open()?;
-
-    let mut reader = BufReader::new(port.try_clone()?);
-    loop {
-        print!("Enter an integer (or 'q' to quit): ");
-        io::stdout().flush()?;
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
-        let input = input.trim();
-
-        if input == "q" {
-            println!("Shutting down...");
-            break;
-        }
-
-        port.write_all(input.as_bytes())?;
-        port.write_all(b"\n")?;
-        port.flush()?;
-
-        let mut response = String::new();
-        reader.read_line(&mut response)?;
-        let num: i32 = match response.trim().parse() {
-            Ok(n) => n,
-            Err(e) => {
-                eprintln!("Error parsing response {}", e);
-                continue;
-            }
-        };
-
-        println!("Arduino reponse: {}", num);
+fn test(test_num: i32) -> io::Result<()> {
+    if test_num == 1 {
+        test_file::test_connection()?; 
     }
-
-    Ok(())
-}
-
-fn test_argon() -> io::Result<()> {
-    let argon2 = Argon2::default();
-    let password = b"net123";
-    // random salt (saved on SD card in the future)
-    let salt = b"some salt";
-    
-    print!("Please enter your password: ");
-    io::stdout().flush()?;
-    let mut input_password = String::new();
-    std::io::stdin().read_line(&mut input_password)?;
-    let input_password = input_password.trim();
-    
-    let mut master_key = [0u8; 32];
-    let mut input_master_key = [0u8; 32];
-
-    // generate master key (saved on ATECC608 in the future)
-    argon2
-        .hash_password_into(password, salt, &mut master_key)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-
-    // derive key from user input
-    argon2
-        .hash_password_into(input_password.as_bytes(), salt, &mut input_master_key)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-
-    if master_key == input_master_key {
-        println!("> OK: KEYS MATCH!");
+    if test_num == 2 {
+        test_file::test_argon()?;
     }
-    else {
-        println!("> ERROR: KEYS DO NOT MATCH!");
+    if test_num == 3 {
+        test_file::test_aes256gcm()?;
     }
-    println!("Master key: {:02x?}", master_key);
-    println!("Derived key: {:02x?}", input_master_key);
-
-    Ok(())
-}
-
-fn test_aes256gcm() -> io::Result<()> {
-    let derived_key= b"some_derived_key_123456789012345";
-    let key = Key::<Aes256Gcm>::from_slice(derived_key);
-    let cipher = Aes256Gcm::new(&key);
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-
-    let cipher_text = cipher
-        .encrypt(&nonce, b"plaintext message".as_ref())
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-
-    let plain_text = cipher
-        .decrypt(&nonce, cipher_text.as_ref())
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-
-    let plain_text_str = String::from_utf8(plain_text)
-        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
-
-    println!("Decrypted text: {:?}", plain_text_str);
 
     Ok(())
 }
 
 fn main() -> io::Result<()> {
     let test_num = 0;
+    test(test_num)?;
 
-    // avoid unused function warnings
-    if test_num == 1 {
-        test_connection()?; 
-    }
-    if test_num == 2 {
-        test_argon()?;
-    }
-    if test_num == 3 {
-        test_aes256gcm()?;
+    println!("Welcome to {} v{}!", APP_NAME, APP_VERSION);
+    println!("Type 'help' to list commands or 'exit' to quit.");
+
+    loop {
+        print!("> ");
+        io::stdout().flush()?;
+
+        let mut command = String::new();
+        io::stdin().read_line(&mut command)?;
+        let command = command.trim();
+
+        match command {
+            "exit" => {
+                println!("Shutting down...");
+                break;
+            }
+            "help" => {
+                println!("add <name>");
+                println!("list <name>");
+                println!("exit");
+            }
+            "add" => {
+                println!("Adding password...");
+            }
+            "list" => {
+                println!("Listing passwords...");
+            }
+            _ => {
+                println!("Invalid command '{}'", command);
+            }
+        }
+
     }
 
-    Ok(())       
+    println!("See you soon!");
+    Ok(())
 }

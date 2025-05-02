@@ -6,6 +6,16 @@ authors = ["Lukas Drobek"]
 description = "Interactive CLI application for an Arduino-based password vault"
 
 [dependencies]
-serialport="4.7.1"
-argon2="0.5.3"
-aes-gcm="0.10.3"
+serialport="4.7.1"  # Serial communication with Arduino
+argon2="0.5.3"      # Master password key derivation using Argon2id
+aes-gcm="0.10.3"    # Vault encryption/decryption using AES256-GCM
+# rustyline="15.0.0"
+
+# dialoguer = "0.11"
+# console = "0.15"
+# ctrlc = "3.4"
+
+# clap={ version="4.5.0", features = ["derive"] }
+# colored = "3.0"
+# anyhow = "1.0"
+# shlex = "1.3"
