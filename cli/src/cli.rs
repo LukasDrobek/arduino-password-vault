@@ -2,7 +2,7 @@ use clap::Parser;
 use anyhow::Result;
 use std::io::{self, Write};
 
-use crate::command::{CommandHandler, Commands, ParseResult};
+use crate::command::{CommandHandler, ParseResult};
 use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
 
 #[derive(Parser, Clone)]
@@ -10,23 +10,39 @@ use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
     name = APP_NAME,
     version = APP_VERSION,
     about = APP_DESCRIPTION,
-    long_about = None
+    long_about = None,
+    disable_help_flag = true,
+    disable_version_flag = true
 )]
 pub struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
+    #[arg(short, long)]
+    help: bool,
 
     #[arg(short, long)]
-    interactive: bool
+    interactive: bool,
+
+    #[arg(short, long)]
+    version: bool,
+
+    #[arg(num_args = 0..)]
+    raw: Vec<String>
 }
 
 impl Cli {
+    pub fn get_help(&self) -> bool {
+        self.help
+    }
+
     pub fn get_interactive(&self) -> bool {
         self.interactive
     }
 
-    pub fn get_command(&self) -> Option<&Commands> {
-        self.command.as_ref()
+    pub fn get_version(&self) -> bool {
+        self.version
+    }
+
+    pub fn get_raw(&self) -> &Vec<String> {
+        self.raw.as_ref()
     }
 
     pub fn run_interactive(&self) -> Result<()> {

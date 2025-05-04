@@ -7,18 +7,42 @@ mod constants;
 // mod vault;
 
 use cli::Cli;
-use command::CommandHandler;
+use command::{ParseResult, CommandHandler};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if cli.get_help() {
+        CommandHandler::show_help();
+        return Ok(());
+    }
+
+    if cli.get_version() {
+        CommandHandler::show_version();
+        return Ok(());
+    }
+
     if cli.get_interactive() {
         cli.run_interactive()?;
-    } else if let Some(cmd) = cli.get_command() {
-        CommandHandler::handle_command(cmd.clone())?;
+    } else if cli.get_raw().is_empty() {
+        CommandHandler::show_no_command();
     } else {
-        println!("No command specified.");
-        println!("Use -i for interactive mode or specify a command.")
+        let line = cli.get_raw().join(" ");
+        let command = line.trim();
+
+        match CommandHandler::parse_command(command) {
+            ParseResult::Cmd(command) => {
+                CommandHandler::handle_command(command)?;
+            }
+            ParseResult::WrongArgs { name, usage } => {
+                println!("Incorrect usage of '{}'.", name);
+                println!("Usage: {}", usage);
+            }
+            ParseResult::Unknown => {
+                println!("Unknown command: '{}'.", command);
+                println!("Type 'help' for available commands.");
+            }
+        }
     }
 
     Ok(())

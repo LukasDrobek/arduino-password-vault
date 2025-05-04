@@ -150,4 +150,13 @@ impl CommandHandler {
             println!("    {:width$}    {}", cmd, desc, width = width);
         }
     }
+
+    pub fn show_version() {
+        println!("{} v{}", APP_NAME, APP_VERSION);
+    }
+
+    pub fn show_no_command() {
+        println!("No command specified.");
+        println!("Use -i for interactive mode or specify a command.");
+    }
 }
