@@ -24,6 +24,12 @@ pub enum Commands {
 
 pub struct CommandHandler;
 
+pub enum ParseResult {
+    Cmd(Commands),
+    WrongArgs { name: &'static str, usage: &'static str },
+    Unknown
+}
+
 impl CommandHandler {
     pub fn handle_command(command: Commands) -> Result<()> {
         match command {
@@ -54,43 +60,65 @@ impl CommandHandler {
         Ok(())
     }
 
-    pub fn parse_command(command_str: &str) -> Option<Commands> {
+    pub fn parse_command(command_str: &str) -> ParseResult {
         let parts: Vec<&str> = command_str.split_whitespace().collect();
+
+        const ADD_USAGE: &str = "add <service> <username> <password>";
+        const GET_USAGE: &str = "get <service> [username]";
+        const DELETE_USAGE: &str = "delte <service> <username>";
 
         match parts.as_slice() {
             ["init"] => {
-                return Some(Commands::Init);
+                ParseResult::Cmd(Commands::Init)
             }
+            
             ["add", service, username, password] => {
-                return Some(Commands::Add {
+                ParseResult::Cmd(Commands::Add {
                     service: service.to_string(),
                     username: username.to_string(),
-                    password: password.to_string() 
-                });
+                    password: password.to_string()
+                })
             }
+            
+            ["add", ..] => {
+                ParseResult::WrongArgs { name: "add", usage: ADD_USAGE }
+            }
+
             ["get", service] => {
-                return Some(Commands::Get {
+                ParseResult::Cmd(Commands::Get {
                     service: service.to_string(),
                     username: None
                 })
             }
+
             ["get", service, username] => {
-                return Some(Commands::Get {
+                ParseResult::Cmd(Commands::Get {
                     service: service.to_string(),
                     username: Some(username.to_string())
                 })
             }
-            ["list"] => {
-                return Some(Commands::List);
+
+            ["get", ..] => {
+                ParseResult::WrongArgs { name: "get", usage: GET_USAGE }
             }
+
+            ["list"] => {
+                ParseResult::Cmd(Commands::List)
+            }
+
             ["delete", service, username] => {
-                return Some(Commands::Delete {
+                ParseResult::Cmd(Commands::Delete {
                     service: service.to_string(),
                     username: username.to_string()
                 })
             }
+
+            ["delete", ..] => {
+                ParseResult::WrongArgs { name: "delete", usage: DELETE_USAGE }
+            }
+
             _ => {
-                return None;
+                ParseResult::Unknown
             }
         }
     }
@@ -107,14 +135,14 @@ impl CommandHandler {
 
         println!("Commands:");
         let commands = [
-            ("help",                          "Show this help information"),
-            ("version",                       "Print version information"),
-            ("init",                          "Initialize an empty vault"),
-            ("add <service> <username> <pw>", "Add a new password entry"),
-            ("get <service> [username]",      "Retrieve entries for a service"),
-            ("list",                          "List all saved entries"),
-            ("delete <service> <username>",   "Delete a password entry"),
-            ("exit",                          "Exit interactive mode"),
+            ("help",                                "Show this help information"),
+            ("version",                             "Print version information"),
+            ("init",                                "Initialize an empty vault"),
+            ("add <service> <username> <passowrd>", "Add a new password entry"),
+            ("get <service> [username]",            "Retrieve entries for a service"),
+            ("list",                                "List all saved entries"),
+            ("delete <service> <username>",         "Delete a password entry"),
+            ("exit",                                "Exit interactive mode"),
         ];
     
         let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);

@@ -2,12 +2,16 @@ use clap::Parser;
 use anyhow::Result;
 use std::io::{self, Write};
 
-use crate::command::{Commands, CommandHandler};
-use crate::constants::{APP_NAME, APP_VERSION};
+use crate::command::{CommandHandler, Commands, ParseResult};
+use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
 
 #[derive(Parser, Clone)]
-#[command(name="vault-cli")]
-#[command(about="CLI application for an Arduino-based password vault", long_about=None)]
+#[command(
+    name = APP_NAME,
+    version = APP_VERSION,
+    about = APP_DESCRIPTION,
+    long_about = None
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -36,17 +40,32 @@ impl Cli {
             let mut line = String::new();
             io::stdin().read_line(&mut line)?;
             let command = line.trim();
-    
+            if command.is_empty() {
+                continue;
+            }
+
             match command {
-                "exit" => break,
-                "help" => CommandHandler::show_help(),
-                cmd => {
-                    if let Some(command) = CommandHandler::parse_command(cmd) {
-                        CommandHandler::handle_command(command)?;
-                    } else {
-                        println!("Unknown command: {}", command);
-                        println!("Type 'help' for available commands.");
-                    }
+                "exit" => {
+                    break;
+                }
+                "help" => {
+                    CommandHandler::show_help();
+                    continue;
+                }
+                _ => {}
+            }
+
+            match CommandHandler::parse_command(command) {
+                ParseResult::Cmd(command) => {
+                    CommandHandler::handle_command(command)?;
+                }
+                ParseResult::WrongArgs { name, usage } => {
+                    println!("Incorrect usage of '{}'.", name);
+                    println!("Usage: {}", usage);
+                }
+                ParseResult::Unknown => {
+                    println!("Unknown command: '{}'.", command);
+                    println!("Type 'help' for available commands.");
                 }
             }
         }
