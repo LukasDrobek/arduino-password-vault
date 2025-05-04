@@ -123,7 +123,7 @@ impl CommandHandler {
         }
     }
 
-    pub fn show_help() {
+    pub fn show_help() -> Result<()> {
         println!("{} v{}", APP_NAME, APP_VERSION);
         println!("{}", APP_DESCRIPTION);
         println!();
@@ -149,14 +149,18 @@ impl CommandHandler {
         for (cmd, desc) in &commands {
             println!("    {:width$}    {}", cmd, desc, width = width);
         }
+
+        Ok(())
     }
 
-    pub fn show_version() {
+    pub fn show_version() -> Result<()> {
         println!("{} v{}", APP_NAME, APP_VERSION);
+        Ok(())
     }
 
-    pub fn show_no_command() {
+    pub fn show_no_command() -> Result<()> {
         println!("No command specified.");
         println!("Use -i for interactive mode or specify a command.");
+        Ok(())
     }
 }

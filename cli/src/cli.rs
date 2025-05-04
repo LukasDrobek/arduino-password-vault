@@ -25,27 +25,53 @@ pub struct Cli {
     version: bool,
 
     #[arg(num_args = 0..)]
-    raw: Vec<String>
+    raw_args: Vec<String>
 }
 
 impl Cli {
-    pub fn get_help(&self) -> bool {
-        self.help
+    pub fn parse() -> Self {
+        Parser::parse()
     }
 
-    pub fn get_interactive(&self) -> bool {
-        self.interactive
+    fn dispatch_command(&self, command: &str) -> Result<()> {
+        match CommandHandler::parse_command(command) {
+            ParseResult::Cmd(command) => {
+                CommandHandler::handle_command(command)?;
+            }
+            ParseResult::WrongArgs { name, usage } => {
+                println!("Incorrect usage of '{}'.", name);
+                println!("Usage: {}", usage);
+            }
+            ParseResult::Unknown => {
+                println!("Unknown command: '{}'.", command);
+                println!("Type 'help' for available commands.");
+            }
+        }
+        Ok(())
     }
 
-    pub fn get_version(&self) -> bool {
-        self.version
+    pub fn run(&self) -> Result<()> {
+        if self.help {
+            return CommandHandler::show_help();
+        }
+        if self.version {
+            return CommandHandler::show_version();
+        }
+        if self.interactive {
+            return self.run_interactive();
+        }
+
+        let raw_args = self.raw_args.join(" ");
+        let command = raw_args.trim();
+        if command.is_empty() {
+            return CommandHandler::show_no_command();
+        }
+
+        self.dispatch_command(command)?;
+        Ok(())
     }
 
-    pub fn get_raw(&self) -> &Vec<String> {
-        self.raw.as_ref()
-    }
-
-    pub fn run_interactive(&self) -> Result<()> {
+    fn run_interactive(&self) -> Result<()> {
         println!("Welcome to {} v{}", APP_NAME, APP_VERSION);
         println!("Type 'help' to list commands or 'exit' to quit.");
 
@@ -68,24 +94,9 @@ impl Cli {
                     CommandHandler::show_help();
                     continue;
                 }
-                _ => {}
-            }
-
-            match CommandHandler::parse_command(command) {
-                ParseResult::Cmd(command) => {
-                    CommandHandler::handle_command(command)?;
-                }
-                ParseResult::WrongArgs { name, usage } => {
-                    println!("Incorrect usage of '{}'.", name);
-                    println!("Usage: {}", usage);
-                }
-                ParseResult::Unknown => {
-                    println!("Unknown command: '{}'.", command);
-                    println!("Type 'help' for available commands.");
-                }
+                _ => self.dispatch_command(command)?
             }
         }
-
         Ok(())
     }
 }
