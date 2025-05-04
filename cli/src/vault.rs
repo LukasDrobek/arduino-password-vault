@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 #[derive(Debug)]
 pub struct PasswordEntry {
     service: String,
@@ -7,46 +9,42 @@ pub struct PasswordEntry {
 
 #[derive(Debug)]
 pub struct Vault {
-    entries: Vec<PasswordEntry>
+    entries: HashMap<(String, String), PasswordEntry>
 }
 
 impl Vault {
     pub fn new() -> Self {
-        Vault { entries: Vec::new() }
+        Vault { entries: HashMap::new() }
     }
 
-    pub fn add_entry(&mut self, service: String, username: String, password: String) {
-        self.entries.push(PasswordEntry { service, username, password });
-    }
-
-    pub fn list_all_entries(&self) {
-        for (i, entry) in self.entries.iter().enumerate() {
-            println!("{}. {} - {}", i + 1, entry.service, entry.username);
+    pub fn add(&mut self, service: String, username: String, password: String) -> bool {
+        let key = (service.clone(), username.clone());
+        if self.entries.contains_key(&key) {
+            return false;
+        } else {
+            self.entries.insert(key, PasswordEntry { service, username, password });
+            return true;
         }
     }
 
-    pub fn find_entries(&self, service: String) {
-        let filtered_entries : Vec<&PasswordEntry> = self.entries
-            .iter()
-            .filter(|entry| entry.service == service)
-            .collect();
-        for (i, entry) in filtered_entries.iter().enumerate() {
-            println!("{}. {} - {}", i + 1, entry.service, entry.username);
-        }
+    pub fn get_all(&self) -> Vec<&PasswordEntry> {
+        self.entries.values().collect()
     }
 
-    pub fn get_password(&self, service: String, username: String) {
-        let filtered_entries : Vec<&PasswordEntry> = self.entries
-            .iter()
-            .filter(|entry| entry.service == service && entry.username == username)
-            .collect();
-        if filtered_entries.is_empty() {
-            println!("No password found for {} - {}", service, username);
-        }
-        for (_, entry) in filtered_entries.iter().enumerate() {
-            println!("{} - {}", entry.service, entry.username);
-            println!("-> {}", entry.password);
-        }
+    pub fn find(&self, service: String, username: Option<String>) -> Vec<&PasswordEntry> {
+        match username {
+            Some(name) => {
+                self.entries
+                    .get(&(service, name))
+                    .into_iter()
+                    .collect()
+            }
+            None => {
+                self.entries
+                    .iter()
+                    .filter_map(|((s, _), entry)| if *s == service { Some(entry) } else { None })
+                    .collect()
+            }
+        }   
     }
-
 }

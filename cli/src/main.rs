@@ -4,7 +4,7 @@ use clap::Parser;
 mod cli;
 mod command;
 mod constants;
-// mod vault;
+mod vault;
 
 use cli::Cli;
 use command::{ParseResult, CommandHandler};
