@@ -91,7 +91,7 @@ impl Cli {
                     break;
                 }
                 "help" => {
-                    CommandHandler::show_help();
+                    CommandHandler::show_help()?;
                     continue;
                 }
                 _ => self.dispatch_command(command)?
