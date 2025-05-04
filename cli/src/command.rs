@@ -3,7 +3,7 @@ use clap::Subcommand;
 
 use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 pub enum Commands {
     Init,
     Add {
