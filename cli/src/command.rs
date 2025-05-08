@@ -1,8 +1,6 @@
 use anyhow::Result;
 use clap::Subcommand;
 
-use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
-
 #[derive(Subcommand, Clone)]
 pub enum Command {
     Init,
@@ -123,45 +121,5 @@ impl CommandHandler {
                 ParseResult::Unknown
             }
         }
-    }
-
-    pub fn show_help() -> Result<()> {
-        println!("{} v{}", APP_NAME, APP_VERSION);
-        println!("{}", APP_DESCRIPTION);
-        println!();
-
-        println!("Usage:");
-        println!("    {0} [options]              # single-command mode", APP_NAME);
-        println!("    {0} -i, --interactive      # start in interactive (REPL) mode", APP_NAME);
-        println!();
-
-        println!("Commands:");
-        let commands = [
-            ("help",                                "Show this help information"),
-            ("version",                             "Print version information"),
-            ("init",                                "Initialize an empty vault"),
-            ("add <service> <username> <passowrd>", "Add a new password entry"),
-            ("get [service] [username]",            "Retrieve entries, optionally for a specific service and username"),
-            ("delete <service> <username>",         "Delete a password entry"),
-            ("exit",                                "Exit interactive mode"),
-        ];
-    
-        let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
-        for (cmd, desc) in &commands {
-            println!("    {:width$}    {}", cmd, desc, width = width);
-        }
-
-        Ok(())
-    }
-
-    pub fn show_version() -> Result<()> {
-        println!("{} v{}", APP_NAME, APP_VERSION);
-        Ok(())
-    }
-
-    pub fn show_no_command() -> Result<()> {
-        println!("No command specified.");
-        println!("Use -i for interactive mode or specify a command.");
-        Ok(())
     }
 }

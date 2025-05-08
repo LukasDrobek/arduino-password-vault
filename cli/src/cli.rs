@@ -33,29 +33,12 @@ impl Cli {
         Parser::parse()
     }
 
-    fn dispatch_command(&self, command: &str) -> Result<()> {
-        match CommandHandler::parse_command(command) {
-            ParseResult::Cmd(command) => {
-                CommandHandler::handle_command(command)?;
-            }
-            ParseResult::WrongArgs { name, usage } => {
-                println!("Incorrect usage of '{}'.", name);
-                println!("Usage: {}", usage);
-            }
-            ParseResult::Unknown => {
-                println!("Unknown command: '{}'.", command);
-                println!("Type 'help' for available commands.");
-            }
-        }
-        Ok(())
-    }
-
     pub fn run(&self) -> Result<()> {
         if self.help {
-            return CommandHandler::show_help();
+            return self.show_help();
         }
         if self.version {
-            return CommandHandler::show_version();
+            return self.show_version();
         }
         if self.interactive {
             return self.run_interactive();
@@ -64,7 +47,7 @@ impl Cli {
         let raw_args = self.raw_args.join(" ");
         let command = raw_args.trim();
         if command.is_empty() {
-            return CommandHandler::show_no_command();
+            return self.show_no_command();
         }
 
         self.dispatch_command(command)?;
@@ -90,13 +73,73 @@ impl Cli {
                 "exit" => {
                     break;
                 }
-                "help" => {
-                    CommandHandler::show_help()?;
+                "-h" | "help" | "--help" => {
+                    self.show_help()?;
                     continue;
+                }
+                "-v" | "version" | "--version" => {
+                    self.show_version()?;
                 }
                 _ => self.dispatch_command(command)?
             }
         }
+        Ok(())
+    }
+
+    fn dispatch_command(&self, command: &str) -> Result<()> {
+        match CommandHandler::parse_command(command) {
+            ParseResult::Cmd(command) => {
+                CommandHandler::handle_command(command)?;
+            }
+            ParseResult::WrongArgs { name, usage } => {
+                println!("Incorrect usage of '{}'.", name);
+                println!("Usage: {}", usage);
+            }
+            ParseResult::Unknown => {
+                println!("Unknown command: '{}'.", command);
+                println!("Type 'help' for available commands.");
+            }
+        }
+        Ok(())
+    }
+
+    fn show_version(&self) -> Result<()> {
+        println!("{} v{}", APP_NAME, APP_VERSION);
+        Ok(())
+    }
+
+    fn show_no_command(&self) -> Result<()> {
+        println!("No command specified.");
+        println!("Use -i for interactive mode or specify a command.");
+        Ok(())
+    }
+
+    fn show_help(&self) -> Result<()> {
+        println!("{} v{}", APP_NAME, APP_VERSION);
+        println!("{}", APP_DESCRIPTION);
+        println!();
+
+        println!("Usage:");
+        println!("    {0} [options]              # single-command mode", APP_NAME);
+        println!("    {0} -i, --interactive      # start in interactive (REPL) mode", APP_NAME);
+        println!();
+
+        println!("Commands:");
+        let commands = [
+            ("help",                                "Show this help information"),
+            ("version",                             "Print version information"),
+            ("init",                                "Initialize an empty vault"),
+            ("add <service> <username> <passowrd>", "Add a new password entry"),
+            ("get [service] [username]",            "Retrieve entries, optionally for a specific service and username"),
+            ("delete <service> <username>",         "Delete a password entry"),
+            ("exit",                                "Exit interactive mode"),
+        ];
+    
+        let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
+        for (cmd, desc) in &commands {
+            println!("    {:width$}    {}", cmd, desc, width = width);
+        }
+
         Ok(())
     }
 }
