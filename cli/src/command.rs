@@ -4,7 +4,7 @@ use clap::Subcommand;
 use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
 
 #[derive(Subcommand, Clone)]
-pub enum Commands {
+pub enum Command {
     Init,
     Add {
         service: String,
@@ -12,10 +12,9 @@ pub enum Commands {
         password: String
     },
     Get {
-        service: String,
+        service: Option<String>,
         username: Option<String>
     },
-    List,
     Delete {
         service: String,
         username: String
@@ -25,34 +24,34 @@ pub enum Commands {
 pub struct CommandHandler;
 
 pub enum ParseResult {
-    Cmd(Commands),
+    Cmd(Command),
     WrongArgs { name: &'static str, usage: &'static str },
     Unknown
 }
 
 impl CommandHandler {
-    pub fn handle_command(command: Commands) -> Result<()> {
+    pub fn handle_command(command: Command) -> Result<()> {
         match command {
-            Commands::Init => {
+            Command::Init => {
                 println!("handle_command(init)");
             }
-            Commands::Add { service, username, password } => {
+            Command::Add { service, username, password } => {
                 println!("handle_command(add <{}> <{}> <{}>)", service, username, password);
             }
-            Commands::Get { service, username } => {
-                match username {
-                    Some(username) => {
-                        println!("handle_command(get <{}> <{}>)", service, username);
+            Command::Get { service, username } => {
+                match (service, username) {
+                    (None, _) => {
+                        println!("handle_command(get)");
                     }
-                    None => {
-                        println!("handle_command(get <{}>", service);
+                    (Some(service), None) => {
+                        println!("handle_command(get [{}]", service);
+                    }
+                    (Some(service), Some(username)) => {
+                        println!("handle_command(get [{}] [{}]", service, username);
                     }
                 }
             }
-            Commands::List => {
-                println!("handle_command(list)");
-            }
-            Commands::Delete { service, username } => {
+            Command::Delete { service, username } => {
                 println!("handle_command(delete <{}> <{}>)", service, username);
             }
         }
@@ -64,16 +63,16 @@ impl CommandHandler {
         let parts: Vec<&str> = command_str.split_whitespace().collect();
 
         const ADD_USAGE: &str = "add <service> <username> <password>";
-        const GET_USAGE: &str = "get <service> [username]";
-        const DELETE_USAGE: &str = "delte <service> <username>";
+        const GET_USAGE: &str = "get [service] [username]";
+        const DELETE_USAGE: &str = "delete <service> <username>";
 
         match parts.as_slice() {
             ["init"] => {
-                ParseResult::Cmd(Commands::Init)
+                ParseResult::Cmd(Command::Init)
             }
             
             ["add", service, username, password] => {
-                ParseResult::Cmd(Commands::Add {
+                ParseResult::Cmd(Command::Add {
                     service: service.to_string(),
                     username: username.to_string(),
                     password: password.to_string()
@@ -84,16 +83,23 @@ impl CommandHandler {
                 ParseResult::WrongArgs { name: "add", usage: ADD_USAGE }
             }
 
+            ["get"] => {
+                ParseResult::Cmd(Command::Get {
+                    service: None,
+                    username: None
+                })
+            }
+
             ["get", service] => {
-                ParseResult::Cmd(Commands::Get {
-                    service: service.to_string(),
+                ParseResult::Cmd(Command::Get {
+                    service: Some(service.to_string()),
                     username: None
                 })
             }
 
             ["get", service, username] => {
-                ParseResult::Cmd(Commands::Get {
-                    service: service.to_string(),
+                ParseResult::Cmd(Command::Get {
+                    service: Some(service.to_string()),
                     username: Some(username.to_string())
                 })
             }
@@ -102,12 +108,8 @@ impl CommandHandler {
                 ParseResult::WrongArgs { name: "get", usage: GET_USAGE }
             }
 
-            ["list"] => {
-                ParseResult::Cmd(Commands::List)
-            }
-
             ["delete", service, username] => {
-                ParseResult::Cmd(Commands::Delete {
+                ParseResult::Cmd(Command::Delete {
                     service: service.to_string(),
                     username: username.to_string()
                 })
@@ -139,8 +141,7 @@ impl CommandHandler {
             ("version",                             "Print version information"),
             ("init",                                "Initialize an empty vault"),
             ("add <service> <username> <passowrd>", "Add a new password entry"),
-            ("get <service> [username]",            "Retrieve entries for a service"),
-            ("list",                                "List all saved entries"),
+            ("get [service] [username]",            "Retrieve entries, optionally for a specific service and username"),
             ("delete <service> <username>",         "Delete a password entry"),
             ("exit",                                "Exit interactive mode"),
         ];
