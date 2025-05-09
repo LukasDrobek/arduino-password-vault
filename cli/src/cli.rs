@@ -53,6 +53,8 @@ impl Cli {
 
         let mut manager = VaultManager::new()?;
         self.dispatch_command(command, &mut manager)?;
+        manager.update_vault_file()?;
+
         Ok(())
     }
 
@@ -86,6 +88,9 @@ impl Cli {
                 _ => self.dispatch_command(command, &mut manager)?
             }
         }
+
+        manager.update_vault_file()?;
+
         Ok(())
     }
 

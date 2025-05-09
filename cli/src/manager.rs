@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use dialoguer::Password;
 use zeroize::Zeroizing;
 use rand::RngCore;
 use rand::rngs::OsRng;
@@ -14,7 +13,8 @@ pub struct VaultManager {
     master_key: Option<Zeroizing<[u8; MASTER_KEY_LEN]>>,
     vault: Option<Zeroizing<PasswordVault>>,
     is_init: bool,
-    is_locked: bool
+    is_locked: bool,
+    needs_update: bool
 }
 
 impl VaultManager {
@@ -26,7 +26,8 @@ impl VaultManager {
             master_key: None,
             vault: None,
             is_init: false,
-            is_locked: true
+            is_locked: true,
+            needs_update: false
         })
     }
 
@@ -64,6 +65,7 @@ impl VaultManager {
         self.vault = Some(Zeroizing::new(password_vault));
         self.is_init = true;
         self.is_locked = false;
+        self.needs_update = false;
 
         Ok(())
     }
@@ -78,15 +80,18 @@ impl VaultManager {
 
     pub fn add_entry(&mut self, service: &str, username: &str, password: &str) -> Result<()> {
         self.vault_mut()?.add(PasswordEntry::new(service, username, password));
+        self.needs_update = true;
         Ok(())
     }
 
     pub fn get_entry(&mut self, service: Option<String>, username: Option<String>) -> Result<Vec<&PasswordEntry>> {
-        Ok(self.vault_mut()?.get(service, username))
+        let res = self.vault_mut()?.get(service, username);
+        Ok(res)
     }
 
     pub fn delete_entry(&mut self, service: &str, username: &str) -> Result<()> {
         self.vault_mut()?.delete(service, username);
+        self.needs_update = true;
         Ok(())
     }
 
@@ -138,13 +143,34 @@ impl VaultManager {
         Ok(())
     }
 
+    pub fn update_vault_file(&mut self) -> Result<()> {
+        if !self.needs_update {
+            return Ok(())
+        }
+
+        // encrypt vault
+        let password_vault_json = serde_json::to_string(self.vault_mut()?)?;
+        let (nonce, ciphertext, auth_tag) = crypto::encrypt_data(self.master_key()?, password_vault_json.as_bytes())?;
+
+        // send encrypted vault to arduino (hex)
+        let init_vault_command = format!(
+            "UPDATE_VAULT:{}:{}:{}\n",
+            hex::encode(nonce),
+            hex::encode(ciphertext),
+            hex::encode(auth_tag)
+        );
+        self.serial.write(&init_vault_command)?;        
+
+        Ok(())
+    }
+
     fn vault_mut(&mut self) -> Result<&mut PasswordVault> {
         self.vault
             .as_deref_mut()
             .ok_or_else(|| anyhow!("Vault is not available!"))
     }
 
-    fn master_key(&mut self) -> Result<&[u8; MASTER_KEY_LEN]> {
+    fn master_key(&self) -> Result<&[u8; MASTER_KEY_LEN]> {
         self.master_key
             .as_deref()
             .ok_or_else(|| anyhow!("Master key is not available!"))

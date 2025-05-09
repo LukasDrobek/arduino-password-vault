@@ -37,7 +37,7 @@ impl SerialManager {
     pub fn get_salt(&mut self) -> Result<[u8; SALT_LEN]> {
         self.write("GET_SALT\n")?;
         let mut salt = [0u8; SALT_LEN];
-        self.port.read_exact(&mut salt);
+        self.port.read_exact(&mut salt)?;
         Ok(salt)
     }
 }
