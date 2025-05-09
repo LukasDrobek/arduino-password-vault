@@ -1,5 +1,9 @@
 use anyhow::Result;
 use clap::Subcommand;
+use dialoguer::Password;
+use zeroize::Zeroize;
+
+use crate::manager::VaultManager;
 
 #[derive(Subcommand, Clone)]
 pub enum Command {
@@ -28,29 +32,83 @@ pub enum ParseResult {
 }
 
 impl CommandHandler {
-    pub fn handle_command(command: Command) -> Result<()> {
+    pub fn handle_command(command: Command, manager: &mut VaultManager) -> Result<()> {
         match command {
             Command::Init => {
-                println!("handle_command(init)");
-            }
-            Command::Add { service, username, password } => {
-                println!("handle_command(add <{}> <{}> <{}>)", service, username, password);
-            }
-            Command::Get { service, username } => {
-                match (service, username) {
-                    (None, _) => {
-                        println!("handle_command(get)");
-                    }
-                    (Some(service), None) => {
-                        println!("handle_command(get [{}]", service);
-                    }
-                    (Some(service), Some(username)) => {
-                        println!("handle_command(get [{}] [{}]", service, username);
-                    }
+                // check state
+                manager.check_vault_file()?;
+                if manager.is_init() {
+                    println!("Already initialized");
+                    return Ok(())
                 }
+
+                // initialize vault with new password
+                let mut password = Password::new()
+                    .with_prompt("Enter master password")
+                    .with_confirmation("Confirm master password", "Passwords don't match")
+                    .interact()?;
+                manager.init(&password)?;
+                password.zeroize();
             }
+
+            Command::Add { service, username, password } => {
+                // check state
+                manager.check_vault_file()?;
+                if !manager.is_init() {
+                    println!("Vault is not initialized!");
+                    return Ok(())   
+                }
+
+                // unlock if necessary
+                if manager.is_locked() {
+                    let mut password = Password::new()
+                        .with_prompt("Enter master password")
+                        .interact()?;
+                    manager.unlock(&password)?;
+                    password.zeroize();
+                }
+
+                manager.add_entry(&service, &username, &password)?;
+            }
+
+            Command::Get { service, username } => {
+                // check state
+                manager.check_vault_file()?;
+                if !manager.is_init() {
+                    println!("Vault is not initialized!");
+                    return Ok(())   
+                }
+
+                // unlock if necessary
+                if manager.is_locked() {
+                    let mut password = Password::new()
+                        .with_prompt("Enter master password")
+                        .interact()?;
+                    manager.unlock(&password)?;
+                    password.zeroize();
+                }
+
+                manager.get_entry(service, username)?;            
+            }
+
             Command::Delete { service, username } => {
-                println!("handle_command(delete <{}> <{}>)", service, username);
+                // check state
+                manager.check_vault_file()?;
+                if !manager.is_init() {
+                    println!("Vault is not initialized!");
+                    return Ok(())   
+                }
+
+                // unlock if necessary
+                if manager.is_locked() {
+                    let mut password = Password::new()
+                        .with_prompt("Enter master password")
+                        .interact()?;
+                    manager.unlock(&password)?;
+                    password.zeroize();
+                }
+
+                manager.delete_entry(&service, &username)?; 
             }
         }
 

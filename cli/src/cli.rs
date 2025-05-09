@@ -4,6 +4,7 @@ use std::io::{self, Write};
 
 use crate::command::{CommandHandler, ParseResult};
 use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
+use crate::manager::VaultManager;
 
 #[derive(Parser, Clone)]
 #[command(
@@ -50,11 +51,13 @@ impl Cli {
             return self.show_no_command();
         }
 
-        self.dispatch_command(command)?;
+        let mut manager = VaultManager::new()?;
+        self.dispatch_command(command, &mut manager)?;
         Ok(())
     }
 
     fn run_interactive(&self) -> Result<()> {
+        let mut manager = VaultManager::new()?;
         println!("Welcome to {} v{}", APP_NAME, APP_VERSION);
         println!("Type 'help' to list commands or 'exit' to quit.");
 
@@ -80,16 +83,16 @@ impl Cli {
                 "-v" | "version" | "--version" => {
                     self.show_version()?;
                 }
-                _ => self.dispatch_command(command)?
+                _ => self.dispatch_command(command, &mut manager)?
             }
         }
         Ok(())
     }
 
-    fn dispatch_command(&self, command: &str) -> Result<()> {
+    fn dispatch_command(&self, command: &str, manager: &mut VaultManager) -> Result<()> {
         match CommandHandler::parse_command(command) {
             ParseResult::Cmd(command) => {
-                CommandHandler::handle_command(command)?;
+                CommandHandler::handle_command(command, manager)?;
             }
             ParseResult::WrongArgs { name, usage } => {
                 println!("Incorrect usage of '{}'.", name);

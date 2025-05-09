@@ -1,23 +1,13 @@
 use anyhow::{anyhow, Result};
+use dialoguer::Password;
 use zeroize::Zeroizing;
 use rand::RngCore;
 use rand::rngs::OsRng;
 
 use crate::constants::{MASTER_KEY_LEN, SALT_LEN};
 use crate::crypto;
-use crate::vault::PasswordVault;
+use crate::vault::{PasswordEntry, PasswordVault};
 use crate::serial::SerialManager;
-
-pub enum InitResult {
-    AlreadyInitialized,
-    Success
-}
-
-pub enum UnlockResult {
-    NotInitialized,
-    AlreadyUnlocked,
-    Success
-}
 
 pub struct VaultManager {
     serial: SerialManager,
@@ -40,13 +30,7 @@ impl VaultManager {
         })
     }
 
-    pub fn init(&mut self, password: &str) -> Result<InitResult> {
-        // check initialization
-        self.check_vault_file()?;
-        if self.is_init {
-            return Ok(InitResult::AlreadyInitialized)
-        }
-
+    pub fn init(&mut self, password: &str) -> Result<()> {
         // generate salt and derive master key
         let mut salt = [0u8; SALT_LEN];
         OsRng.fill_bytes(&mut salt);
@@ -81,19 +65,45 @@ impl VaultManager {
         self.is_init = true;
         self.is_locked = false;
 
-        Ok(InitResult::Success)
+        Ok(())
     }
 
-    fn unlock(&mut self, password: &str) -> Result<()> {
-        // should always be called with an initialized vault
-        if !self.is_init {
-            return Ok(()); // this should not happen
-        }
-        // check if unlocked
-        if !self.is_locked {
-            return Ok(())
-        }
+    pub fn is_init(&self) -> bool {
+        self.is_init
+    }
 
+    pub fn is_locked(&self) -> bool {
+        self.is_locked
+    }
+
+    pub fn add_entry(&mut self, service: &str, username: &str, password: &str) -> Result<()> {
+        self.vault_mut()?.add(PasswordEntry::new(service, username, password));
+        Ok(())
+    }
+
+    pub fn get_entry(&mut self, service: Option<String>, username: Option<String>) -> Result<Vec<&PasswordEntry>> {
+        Ok(self.vault_mut()?.get(service, username))
+    }
+
+    pub fn delete_entry(&mut self, service: &str, username: &str) -> Result<()> {
+        self.vault_mut()?.delete(service, username);
+        Ok(())
+    }
+
+    pub fn check_vault_file(&mut self) -> Result<()> {
+        self.serial.write("CHECK_VAULT_FILE\n")?;
+        let response = self.serial.read_line()?;
+
+        self.is_init = match response.trim() {
+            "VAULT_EXISTS" => true,
+            "VAULT_NOT_EXISTS" => false,
+            res => return Err(anyhow!("Invalid arduino response: {:?}", res))
+        };
+
+        Ok(())
+    }
+
+    pub fn unlock(&mut self, password: &str) -> Result<()> {
         // get salt and derive master key
         let salt = self.serial.get_salt()?;
         let master_key = crypto::dervive_key(password, &salt)?;
@@ -128,16 +138,15 @@ impl VaultManager {
         Ok(())
     }
 
-    fn check_vault_file(&mut self) -> Result<()> {
-        self.serial.write("CHECK_VAULT_FILE\n")?;
-        let response = self.serial.read_line()?;
+    fn vault_mut(&mut self) -> Result<&mut PasswordVault> {
+        self.vault
+            .as_deref_mut()
+            .ok_or_else(|| anyhow!("Vault is not available!"))
+    }
 
-        self.is_init = match response.trim() {
-            "VAULT_EXISTS" => true,
-            "VAULT_NOT_EXISTS" => false,
-            res => return Err(anyhow!("Invalid arduino response: {:?}", res))
-        };
-
-        Ok(())
+    fn master_key(&mut self) -> Result<&[u8; MASTER_KEY_LEN]> {
+        self.master_key
+            .as_deref()
+            .ok_or_else(|| anyhow!("Master key is not available!"))
     }
 }

@@ -10,7 +10,10 @@ use crate::constants::{MASTER_KEY_LEN, NONCE_LEN, AUTH_TAG_LEN};
 pub fn dervive_key(password: &str, salt: &[u8]) -> Result<[u8; MASTER_KEY_LEN]> {
     let argon2 = Argon2::default();
     let mut key = [0u8; MASTER_KEY_LEN];
-    argon2.hash_password_into(password.as_bytes(), salt, &mut key);
+    argon2
+        .hash_password_into(password.as_bytes(), salt, &mut key)
+        .map_err(|e| anyhow!("Argon2 key derivation failed: {:?}", e.to_string()))?;
+
     Ok(key)
 }
 
