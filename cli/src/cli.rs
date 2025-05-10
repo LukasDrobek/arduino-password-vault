@@ -60,36 +60,20 @@ impl Cli {
 
     fn run_interactive(&self) -> Result<()> {
         let mut manager = VaultManager::new()?;
-        println!("Welcome to {} v{}", APP_NAME, APP_VERSION);
-        println!("Type 'help' to list commands or 'exit' to quit.");
+        self.show_welcome()?;
 
         loop {
-            print!("> ");
-            io::stdout().flush()?;
-
-            let mut line = String::new();
-            io::stdin().read_line(&mut line)?;
-            let command = line.trim();
-            if command.is_empty() {
-                continue;
-            }
-
-            match command {
-                "exit" => {
-                    break;
+            if let Some(cmd) = self.prompt_for_command()? {
+                match cmd.as_str() {
+                    "exit" | "quit" => break,
+                    "-h" | "help" | "--help" => self.show_help()?,
+                    "-v" | "version" | "--version" => self.show_version()?,
+                    _ => self.dispatch_command(&cmd, &mut manager)?
                 }
-                "-h" | "help" | "--help" => {
-                    self.show_help()?;
-                    continue;
-                }
-                "-v" | "version" | "--version" => {
-                    self.show_version()?;
-                }
-                _ => self.dispatch_command(command, &mut manager)?,
             }
         }
-
         manager.update_vault_file()?;
+        println!("Goodbye!");
 
         Ok(())
     }
@@ -100,14 +84,37 @@ impl Cli {
                 CommandHandler::handle_command(command, manager)?;
             }
             ParseResult::WrongArgs { name, usage } => {
-                println!("Incorrect usage of '{}'.", name);
+                println!("Error: Incorrect usage of '{}'.", name);
                 println!("Usage: {}", usage);
             }
             ParseResult::Unknown => {
-                println!("Unknown command: '{}'.", command);
+                println!("Error: Unknown command: '{}'.", command);
                 println!("Type 'help' for available commands.");
             }
         }
+        Ok(())
+    }
+
+    fn prompt_for_command(&self) -> Result<Option<String>> {
+        print!("> ");
+        io::stdout().flush()?;
+
+        let mut line = String::new();
+        io::stdin().read_line(&mut line)?;
+        
+        let command = line.trim().to_string();
+        if command.is_empty() {
+            return Ok(None);
+        }
+        
+        Ok(Some(command))
+    }
+
+    fn show_welcome(&self) -> Result<()> {
+        println!("┌─────────────────────────────────────────┐");
+        println!("│ Welcome to {} v{}", APP_NAME, APP_VERSION);
+        println!("│ Type 'help' for commands or 'exit' to quit");
+        println!("└─────────────────────────────────────────┘");
         Ok(())
     }
 
@@ -123,43 +130,33 @@ impl Cli {
     }
 
     fn show_help(&self) -> Result<()> {
-        println!("{} v{}", APP_NAME, APP_VERSION);
-        println!("{}", APP_DESCRIPTION);
+        println!("{} v{} - {}", APP_NAME, APP_VERSION, APP_DESCRIPTION);
         println!();
 
-        println!("Usage:");
-        println!(
-            "    {0} [options]              # single-command mode",
-            APP_NAME
-        );
-        println!(
-            "    {0} -i, --interactive      # start in interactive (REPL) mode",
-            APP_NAME
-        );
+        println!("USAGE:");
+        println!("    {0} [OPTIONS] [COMMAND]", APP_NAME);
         println!();
 
-        println!("Commands:");
+        println!("OPTIONS:");
+        println!("    -h, --help         Display this help message");
+        println!("    -i, --interactive  Start in interactive mode");
+        println!("    -v, --version      Display version information");
+        println!();
+
+        println!("COMMANDS:");
         let commands = [
-            ("help", "Show this help information"),
-            ("version", "Print version information"),
             ("init", "Initialize an empty vault"),
-            (
-                "add <service> <username> <passowrd>",
-                "Add a new password entry",
-            ),
-            (
-                "get [service] [username]",
-                "Retrieve entries, optionally for a specific service and username",
-            ),
-            ("delete <service> <username>", "Delete a password entry"),
+            ("add", "<service> <username> <password> - Add a new entry"),
+            ("get", "[service] [username] - Retrieve entries"),
+            ("delete", "<service> <username> - Delete an entry"),
+            ("help", "Show this help information"),
             ("exit", "Exit interactive mode"),
         ];
 
         let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
         for (cmd, desc) in &commands {
-            println!("    {:width$}    {}", cmd, desc, width = width);
+            println!("    {:<width$}  {}", cmd, desc, width = width);
         }
-
         Ok(())
     }
 }
