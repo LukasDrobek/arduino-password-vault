@@ -47,7 +47,7 @@ impl CommandHandler {
 
                 // initialize vault with new password
                 let mut password = Password::new()
-                    .with_prompt("Enter master password")
+                    .with_prompt("Create master password")
                     .with_confirmation("Confirm master password", "Passwords don't match")
                     .interact()?;
                 manager.init(&password)?;
@@ -95,7 +95,19 @@ impl CommandHandler {
                     password.zeroize();
                 }
 
-                manager.get_entry(service, username)?;
+                let entries = manager.get_entries(service, username)?;
+                if entries.is_empty() {
+                    println!("No entries found.");
+                    return Ok(());
+                }
+
+                println!("Found {}", entries.len());
+                for (i, entry) in entries.iter().enumerate() {
+                    println!("--- #{} ---", i + 1);
+                    println!("Service: {}", entry.service());
+                    println!("Username: {}", entry.username());
+                    println!("Password: {}", entry.password());
+                }
             }
 
             Command::Delete { service, username } => {
