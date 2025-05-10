@@ -22,8 +22,14 @@ impl SerialManager {
         Ok(Self { port })
     }
 
-    pub fn write(&mut self, data: &str) -> Result<()> {
+    pub fn write_str(&mut self, data: &str) -> Result<()> {
         self.port.write_all(data.as_bytes())?;
+        self.port.flush()?;
+        Ok(())
+    }
+
+    pub fn write_bytes(&mut self, data: &[u8]) -> Result<()> {
+        self.port.write_all(&data)?;
         self.port.flush()?;
         Ok(())
     }
@@ -34,10 +40,9 @@ impl SerialManager {
         Ok(buf.trim().to_string())
     }
 
-    pub fn get_salt(&mut self) -> Result<[u8; SALT_LEN]> {
-        self.write("GET_SALT\n")?;
-        let mut salt = [0u8; SALT_LEN];
-        self.port.read_exact(&mut salt)?;
-        Ok(salt)
+    pub fn read_exact(&mut self, buf: &mut [u8]) -> anyhow::Result<()> {
+        self.port.read_exact(buf)
+            .map_err(|e| anyhow::anyhow!("Serial read_exact failed: {}", e))?;
+        Ok(())
     }
 }
