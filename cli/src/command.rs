@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Subcommand;
+use colored::Colorize;
 use dialoguer::{Input, Password};
 use zeroize::Zeroize;
-use colored::Colorize;
 
 use crate::manager::VaultManager;
 
@@ -197,8 +197,11 @@ fn handle_add(
         return Ok(());
     }
 
-    manager.add_entry(&service, &username, &password)?;
-    println!("{}", "Entry added successfully".bright_blue().bold());
+    if manager.add_entry(&service, &username, &password)? {
+        println!("{}", "Entry added successfully".bright_blue().bold());
+        return Ok(());
+    }
+    println!("{}", "Entry already exists".yellow().bold());
     Ok(())
 }
 
@@ -217,11 +220,23 @@ fn handle_get(
         return Ok(());
     }
 
-    let label = if entries.len() == 1 { "entry" } else { "entries "};
-    println!("{} {}", "Found".green(), format!("{} {}", entries.len(), label).green().bold());
+    let label = if entries.len() == 1 {
+        "entry"
+    } else {
+        "entries "
+    };
+    println!(
+        "{} {}",
+        "Found".green(),
+        format!("{} {}", entries.len(), label).green().bold()
+    );
     for (i, entry) in entries.iter().enumerate() {
         println!("{}", "─────────────────────────────".bright_black());
-        println!("{}{}", "Entry #".bright_blue().bold(), (i + 1).to_string().blue().bold());
+        println!(
+            "{}{}",
+            "Entry #".bright_blue().bold(),
+            (i + 1).to_string().blue().bold()
+        );
         println!("{} {}", "Service:".bold(), entry.service().blue());
         println!("{} {}", "Username:".bold(), entry.username().bright_blue());
         println!("{} {}", "Password:".bold(), entry.password().green());
@@ -235,8 +250,18 @@ fn handle_delete(manager: &mut VaultManager, service: String, username: String) 
         return Ok(());
     }
 
-    manager.delete_entry(&service, &username)?;
-    println!("{}", "Entry deleted successfully".green().bold());
-
+    if manager.delete_entry(&service, &username)? {
+        println!("{}", "Entry deleted successfully".green().bold());
+        return Ok(());
+    }
+    println!(
+        "{}",
+        format!(
+            "{} '{}' {} '{}'",
+            "No entry found for service", service, "and username", username
+        )
+        .yellow()
+        .bold()
+    );
     Ok(())
 }

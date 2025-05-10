@@ -10,14 +10,6 @@ pub struct PasswordEntry {
 }
 
 impl PasswordEntry {
-    pub fn new(service: &str, username: &str, password: &str) -> Self {
-        PasswordEntry {
-            service: service.to_string(),
-            username: username.to_string(),
-            password: password.to_string(),
-        }
-    }
-
     pub fn service(&self) -> &str {
         &self.service
     }
@@ -45,9 +37,19 @@ impl PasswordVault {
         }
     }
 
-    pub fn add(&mut self, entry: PasswordEntry) -> Option<PasswordEntry> {
-        self.entries
-            .insert(entry.service.clone() + &entry.username, entry)
+    pub fn add(&mut self, service: &str, username: &str, password: &str) -> Option<PasswordEntry> {
+        let key = format!("{}|{}", service, username);
+        if self.entries.contains_key(&key) {
+            return None;
+        }
+        self.entries.insert(
+            key,
+            PasswordEntry {
+                service: service.to_string(),
+                username: username.to_string(),
+                password: password.to_string(),
+            },
+        )
     }
 
     pub fn get(
@@ -62,16 +64,21 @@ impl PasswordVault {
                 .iter()
                 .filter_map(|(s, entry)| if *s == service { Some(entry) } else { None })
                 .collect(),
-            (Some(service), Some(username)) => self
-                .entries
-                .get(&(service + &username))
-                .into_iter()
-                .collect(),
+            (Some(service), Some(username)) => {
+                let key = format!("{}|{}", service, username);
+                self.entries.get(&key)
+                    .into_iter()
+                    .collect()
+            },
         }
     }
 
     pub fn delete(&mut self, service: &str, username: &str) -> Option<PasswordEntry> {
-        self.entries.remove(&(service.to_string() + &username))
+        let key = format!("{}|{}", service, username);
+        if !self.entries.contains_key(&key) {
+            return None;
+        }
+        self.entries.remove(&key)
     }
 }
 

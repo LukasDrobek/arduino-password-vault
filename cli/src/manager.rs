@@ -78,11 +78,13 @@ impl VaultManager {
         self.is_locked
     }
 
-    pub fn add_entry(&mut self, service: &str, username: &str, password: &str) -> Result<()> {
-        self.vault_mut()?
-            .add(PasswordEntry::new(service, username, password));
-        self.needs_update = true;
-        Ok(())
+    pub fn add_entry(&mut self, service: &str, username: &str, password: &str) -> Result<bool> {
+        let result = self.vault_mut()?.add(service, username, password);
+        if result.is_some() {
+            self.needs_update = true;
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     pub fn get_entries(
@@ -94,10 +96,13 @@ impl VaultManager {
         Ok(res)
     }
 
-    pub fn delete_entry(&mut self, service: &str, username: &str) -> Result<()> {
-        self.vault_mut()?.delete(service, username);
-        self.needs_update = true;
-        Ok(())
+    pub fn delete_entry(&mut self, service: &str, username: &str) -> Result<bool> {
+        let result = self.vault_mut()?.delete(service, username);
+        if result.is_some() {
+            self.needs_update = true;
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     pub fn check_vault_file(&mut self) -> Result<()> {

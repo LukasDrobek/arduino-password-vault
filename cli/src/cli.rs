@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
-use std::io::{self, Write};
 use colored::Colorize;
+use std::io::{self, Write};
 
 use crate::command::{CommandHandler, ParseResult};
 use crate::constants::{APP_DESCRIPTION, APP_NAME, APP_VERSION};
@@ -69,7 +69,7 @@ impl Cli {
                     "exit" | "quit" => break,
                     "-h" | "help" | "--help" => self.show_help()?,
                     "-v" | "version" | "--version" => self.show_version()?,
-                    _ => self.dispatch_command(&cmd, &mut manager)?
+                    _ => self.dispatch_command(&cmd, &mut manager)?,
                 }
             }
         }
@@ -85,12 +85,24 @@ impl Cli {
                 CommandHandler::handle_command(command, manager)?;
             }
             ParseResult::WrongArgs { name, usage } => {
-                println!("{} {}", "Error:".red().bold(), format!("Incorrect usage of '{}'", name).red());
+                println!(
+                    "{} {}",
+                    "Error:".red().bold(),
+                    format!("Incorrect usage of '{}'", name).red()
+                );
                 println!("{} {}", "Usage:".yellow().bold(), usage);
             }
             ParseResult::Unknown => {
-                println!("{} {}", "Error:".red().bold(), format!("Unknown command '{}'", command).red());
-                println!("{} {}", "Type".yellow(), "'help' for available commands".yellow().bold());
+                println!(
+                    "{} {}",
+                    "Error:".red().bold(),
+                    format!("Unknown command '{}'", command).red()
+                );
+                println!(
+                    "{} {}",
+                    "Type".yellow(),
+                    "'help' for available commands".yellow().bold()
+                );
             }
         }
         Ok(())
@@ -102,36 +114,69 @@ impl Cli {
 
         let mut line = String::new();
         io::stdin().read_line(&mut line)?;
-        
+
         let command = line.trim().to_string();
         if command.is_empty() {
             return Ok(None);
         }
-        
+
         Ok(Some(command))
     }
 
     fn show_welcome(&self) -> Result<()> {
-        println!("{}", "┌────────────────────────────────────────────┐".bright_blue());
-        println!("{} {} {}", "│".bright_blue(), format!("Welcome to {} {}{}", APP_NAME.bright_blue().bold(), "v".bright_blue().bold(), APP_VERSION.bright_blue().bold()).bold(), "               │".bright_blue());
-        println!("{} {} {}", "│".bright_blue(), "Type 'help' for commands or 'exit' to quit".italic(), "│".bright_blue());
-        println!("{}", "└────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}",
+            "┌────────────────────────────────────────────┐".bright_blue()
+        );
+        println!(
+            "{} {} {}",
+            "│".bright_blue(),
+            format!(
+                "Welcome to {} {}{}",
+                APP_NAME.bright_blue().bold(),
+                "v".bright_blue().bold(),
+                APP_VERSION.bright_blue().bold()
+            )
+            .bold(),
+            "               │".bright_blue()
+        );
+        println!(
+            "{} {} {}",
+            "│".bright_blue(),
+            "Type 'help' for commands or 'exit' to quit".italic(),
+            "│".bright_blue()
+        );
+        println!(
+            "{}",
+            "└────────────────────────────────────────────┘".bright_blue()
+        );
         Ok(())
     }
 
     fn show_version(&self) -> Result<()> {
-        println!("{} {}", APP_NAME.bright_green().bold(), format!("v{}", APP_VERSION.bright_cyan()).bold());
+        println!(
+            "{} {}",
+            APP_NAME.bright_green().bold(),
+            format!("v{}", APP_VERSION.bright_cyan()).bold()
+        );
         Ok(())
     }
 
     fn show_no_command(&self) -> Result<()> {
         println!("{}", "No command specified".bright_yellow().bold());
-        println!("Use {} for interactive mode or specify a command", "-i".green().bold());
+        println!(
+            "Use {} for interactive mode or specify a command",
+            "-i".green().bold()
+        );
         self.show_help()
     }
 
     fn show_help(&self) -> Result<()> {
-        println!("{} {}", APP_NAME.bright_green().bold(), format!("v{}", APP_VERSION.bright_cyan()).bold());
+        println!(
+            "{} {}",
+            APP_NAME.bright_green().bold(),
+            format!("v{}", APP_VERSION.bright_cyan()).bold()
+        );
         println!("- {}", APP_DESCRIPTION.italic());
         println!();
 
@@ -140,9 +185,21 @@ impl Cli {
         println!();
 
         println!("{}", "OPTIONS:".bold());
-        println!("            {:<12}  {}", "-h, --help".bright_blue().bold(), "Display this help message");
-        println!("            {:<12}  {}", "-i, --interactive".bright_blue().bold(), "Start in interactive mode");
-        println!("            {:<12}  {}", "-v, --version".bright_blue().bold(), "Display version information");
+        println!(
+            "            {:<12}  {}",
+            "-h, --help".bright_blue().bold(),
+            "Display this help message"
+        );
+        println!(
+            "            {:<12}  {}",
+            "-i, --interactive".bright_blue().bold(),
+            "Start in interactive mode"
+        );
+        println!(
+            "            {:<12}  {}",
+            "-v, --version".bright_blue().bold(),
+            "Display version information"
+        );
         println!();
 
         println!("{}", "COMMANDS:".bold());
@@ -156,9 +213,14 @@ impl Cli {
         ];
 
         let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
-        
+
         for (cmd, desc) in &commands {
-            println!("            {:<width$}  {}", cmd.bright_blue().bold(), desc, width = width);
+            println!(
+                "            {:<width$}  {}",
+                cmd.bright_blue().bold(),
+                desc,
+                width = width
+            );
         }
 
         Ok(())
