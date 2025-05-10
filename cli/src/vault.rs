@@ -42,14 +42,13 @@ impl PasswordVault {
         if self.entries.contains_key(&key) {
             return None;
         }
-        self.entries.insert(
-            key,
-            PasswordEntry {
-                service: service.to_string(),
-                username: username.to_string(),
-                password: password.to_string(),
-            },
-        )
+        let entry = PasswordEntry {
+            service: service.to_string(),
+            username: username.to_string(),
+            password: password.to_string(),
+        };
+        self.entries.insert(key, entry.clone());
+        Some(entry)
     }
 
     pub fn get(
