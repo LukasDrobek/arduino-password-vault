@@ -163,19 +163,21 @@ impl Cli {
     }
 
     fn show_no_command(&self) -> Result<()> {
-        println!("{}", "No command specified".bright_yellow().bold());
+        println!("{}", "No command specifie.d".bright_yellow().bold());
         println!(
-            "Use {} for interactive mode or specify a command",
+            "Use {} for interactive mode or specify a command.",
             "-i".green().bold()
         );
+        println!();
         self.show_help()
     }
 
     fn show_help(&self) -> Result<()> {
         println!(
-            "{} {}",
+            "{} {}{}",
             APP_NAME.bright_green().bold(),
-            format!("v{}", APP_VERSION.bright_cyan()).bold()
+            "v".bright_green(),
+            APP_VERSION.bright_green()
         );
         println!("- {}", APP_DESCRIPTION.italic());
         println!();
