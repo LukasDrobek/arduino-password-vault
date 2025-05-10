@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use std::io::{self, Write};
+use colored::Colorize;
 
 use crate::command::{CommandHandler, ParseResult};
 use crate::constants::{APP_DESCRIPTION, APP_NAME, APP_VERSION};
@@ -73,7 +74,7 @@ impl Cli {
             }
         }
         manager.update_vault_file()?;
-        println!("Goodbye!");
+        println!("{}", "Goodbye!".bright_blue().bold());
 
         Ok(())
     }
@@ -84,19 +85,19 @@ impl Cli {
                 CommandHandler::handle_command(command, manager)?;
             }
             ParseResult::WrongArgs { name, usage } => {
-                println!("Error: Incorrect usage of '{}'.", name);
-                println!("Usage: {}", usage);
+                println!("{} {}", "Error:".red().bold(), format!("Incorrect usage of '{}'", name).red());
+                println!("{} {}", "Usage:".yellow().bold(), usage);
             }
             ParseResult::Unknown => {
-                println!("Error: Unknown command: '{}'.", command);
-                println!("Type 'help' for available commands.");
+                println!("{} {}", "Error:".red().bold(), format!("Unknown command '{}'", command).red());
+                println!("{} {}", "Type".yellow(), "'help' for available commands".yellow().bold());
             }
         }
         Ok(())
     }
 
     fn prompt_for_command(&self) -> Result<Option<String>> {
-        print!("> ");
+        print!("{}", "> ".bright_blue().bold());
         io::stdout().flush()?;
 
         let mut line = String::new();
@@ -111,39 +112,40 @@ impl Cli {
     }
 
     fn show_welcome(&self) -> Result<()> {
-        println!("┌─────────────────────────────────────────┐");
-        println!("│ Welcome to {} v{}", APP_NAME, APP_VERSION);
-        println!("│ Type 'help' for commands or 'exit' to quit");
-        println!("└─────────────────────────────────────────┘");
+        println!("{}", "┌────────────────────────────────────────────┐".bright_blue());
+        println!("{} {} {}", "│".bright_blue(), format!("Welcome to {} {}{}", APP_NAME.bright_blue().bold(), "v".bright_blue().bold(), APP_VERSION.bright_blue().bold()).bold(), "               │".bright_blue());
+        println!("{} {} {}", "│".bright_blue(), "Type 'help' for commands or 'exit' to quit".italic(), "│".bright_blue());
+        println!("{}", "└────────────────────────────────────────────┘".bright_blue());
         Ok(())
     }
 
     fn show_version(&self) -> Result<()> {
-        println!("{} v{}", APP_NAME, APP_VERSION);
+        println!("{} {}", APP_NAME.bright_green().bold(), format!("v{}", APP_VERSION.bright_cyan()).bold());
         Ok(())
     }
 
     fn show_no_command(&self) -> Result<()> {
-        println!("No command specified.");
-        println!("Use -i for interactive mode or specify a command.");
-        Ok(())
+        println!("{}", "No command specified".bright_yellow().bold());
+        println!("Use {} for interactive mode or specify a command", "-i".green().bold());
+        self.show_help()
     }
 
     fn show_help(&self) -> Result<()> {
-        println!("{} v{} - {}", APP_NAME, APP_VERSION, APP_DESCRIPTION);
+        println!("{} {}", APP_NAME.bright_green().bold(), format!("v{}", APP_VERSION.bright_cyan()).bold());
+        println!("- {}", APP_DESCRIPTION.italic());
         println!();
 
-        println!("USAGE:");
-        println!("    {0} [OPTIONS] [COMMAND]", APP_NAME);
+        println!("{}", "USAGE:".bold());
+        println!("    {} [OPTIONS] [COMMAND]", APP_NAME.green());
         println!();
 
-        println!("OPTIONS:");
-        println!("    -h, --help         Display this help message");
-        println!("    -i, --interactive  Start in interactive mode");
-        println!("    -v, --version      Display version information");
+        println!("{}", "OPTIONS:".bold());
+        println!("            {:<12}  {}", "-h, --help".bright_blue().bold(), "Display this help message");
+        println!("            {:<12}  {}", "-i, --interactive".bright_blue().bold(), "Start in interactive mode");
+        println!("            {:<12}  {}", "-v, --version".bright_blue().bold(), "Display version information");
         println!();
 
-        println!("COMMANDS:");
+        println!("{}", "COMMANDS:".bold());
         let commands = [
             ("init", "Initialize an empty vault"),
             ("add", "<service> <username> <password> - Add a new entry"),
@@ -154,9 +156,11 @@ impl Cli {
         ];
 
         let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
+        
         for (cmd, desc) in &commands {
-            println!("    {:<width$}  {}", cmd, desc, width = width);
+            println!("            {:<width$}  {}", cmd.bright_blue().bold(), desc, width = width);
         }
+
         Ok(())
     }
 }

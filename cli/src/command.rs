@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Subcommand;
 use dialoguer::{Input, Password};
 use zeroize::Zeroize;
+use colored::Colorize;
 
 use crate::manager::VaultManager;
 
@@ -151,7 +152,7 @@ fn prompt_password_with_confirmation() -> String {
 fn check_vault_state(manager: &mut VaultManager) -> Result<bool> {
     manager.check_vault_file()?;
     if !manager.is_init() {
-        println!("Vault is not initialized!");
+        println!("{}", "Vault is not initialized!".bright_blue().bold());
         return Ok(false);
     }
 
@@ -161,7 +162,7 @@ fn check_vault_state(manager: &mut VaultManager) -> Result<bool> {
         password.zeroize();
 
         if let Err(e) = result {
-            println!("Failed to unlock vault: {}", e);
+            println!("{} {}", "Failed to unlock vault:".bright_blue().bold(), e);
             return Ok(false);
         }
     }
@@ -173,7 +174,7 @@ fn handle_init(manager: &mut VaultManager) -> Result<()> {
     // check state
     manager.check_vault_file()?;
     if manager.is_init() {
-        println!("Vault already initialized.");
+        println!("{}", "Vault is already initialized".yellow().bold());
         return Ok(());
     }
 
@@ -182,7 +183,7 @@ fn handle_init(manager: &mut VaultManager) -> Result<()> {
     manager.init(&password)?;
     password.zeroize();
 
-    println!("Vault initialized successfully!");
+    println!("{}", "Vault initialized successfully".bright_blue().bold());
     Ok(())
 }
 
@@ -197,7 +198,7 @@ fn handle_add(
     }
 
     manager.add_entry(&service, &username, &password)?;
-    println!("Entry added successfully!");
+    println!("{}", "Entry added successfully".bright_blue().bold());
     Ok(())
 }
 
@@ -212,23 +213,20 @@ fn handle_get(
 
     let entries = manager.get_entries(service, username)?;
     if entries.is_empty() {
-        println!("No entries found");
+        println!("{}", "No entries found".yellow().bold());
         return Ok(());
     }
 
-    println!(
-        "Found {} entr{}:",
-        entries.len(),
-        if entries.len() == 1 { "y" } else { "ies" }
-    );
+    let label = if entries.len() == 1 { "entry" } else { "entries "};
+    println!("{} {}", "Found".green(), format!("{} {}", entries.len(), label).green().bold());
     for (i, entry) in entries.iter().enumerate() {
-        println!("─────────────────────────────");
-        println!("Entry #{}", i + 1);
-        println!("Service: {}", entry.service());
-        println!("Username: {}", entry.username());
-        println!("Password: {}", entry.password());
+        println!("{}", "─────────────────────────────".bright_black());
+        println!("{}{}", "Entry #".bright_blue().bold(), (i + 1).to_string().blue().bold());
+        println!("{} {}", "Service:".bold(), entry.service().blue());
+        println!("{} {}", "Username:".bold(), entry.username().bright_blue());
+        println!("{} {}", "Password:".bold(), entry.password().green());
     }
-    println!("─────────────────────────────");
+    println!("{}", "─────────────────────────────".bright_black());
     Ok(())
 }
 
@@ -238,7 +236,7 @@ fn handle_delete(manager: &mut VaultManager, service: String, username: String) 
     }
 
     manager.delete_entry(&service, &username)?;
-    println!("Entry deleted successfully");
+    println!("{}", "Entry deleted successfully".green().bold());
 
     Ok(())
 }
