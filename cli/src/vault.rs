@@ -17,12 +17,24 @@ impl PasswordEntry {
             password: password.to_string(),
         }
     }
+
+    pub fn service(&self) -> &str {
+        &self.service
+    }
+
+    pub fn username(&self) -> &str {
+        &self.username
+    }
+
+    pub fn password(&self) -> &str {
+        &self.password
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PasswordVault {
     version: u8,
-    entries: HashMap<(String, String), PasswordEntry>,
+    entries: HashMap<String, PasswordEntry>,
 }
 
 impl PasswordVault {
@@ -35,7 +47,7 @@ impl PasswordVault {
 
     pub fn add(&mut self, entry: PasswordEntry) -> Option<PasswordEntry> {
         self.entries
-            .insert((entry.service.clone(), entry.username.clone()), entry)
+            .insert(entry.service.clone() + &entry.username, entry)
     }
 
     pub fn get(
@@ -48,17 +60,17 @@ impl PasswordVault {
             (Some(service), None) => self
                 .entries
                 .iter()
-                .filter_map(|((s, _), entry)| if *s == service { Some(entry) } else { None })
+                .filter_map(|(s, entry)| if *s == service { Some(entry) } else { None })
                 .collect(),
             (Some(service), Some(username)) => {
-                self.entries.get(&(service, username)).into_iter().collect()
+                self.entries.get(&(service + &username)).into_iter().collect()
             }
         }
     }
 
     pub fn delete(&mut self, service: &str, username: &str) -> Option<PasswordEntry> {
         self.entries
-            .remove(&(service.to_string(), username.to_string()))
+            .remove(&(service.to_string() + &username))
     }
 }
 
