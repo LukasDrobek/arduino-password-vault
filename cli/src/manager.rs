@@ -1,12 +1,12 @@
-use anyhow::{anyhow, Result};
-use zeroize::Zeroizing;
+use anyhow::{Result, anyhow};
 use rand::RngCore;
 use rand::rngs::OsRng;
+use zeroize::Zeroizing;
 
-use crate::constants::{MASTER_KEY_LEN, SALT_LEN, NONCE_LEN, AUTH_TAG_LEN};
+use crate::constants::{AUTH_TAG_LEN, MASTER_KEY_LEN, NONCE_LEN, SALT_LEN};
 use crate::crypto;
-use crate::vault::{PasswordEntry, PasswordVault};
 use crate::serial::SerialManager;
+use crate::vault::{PasswordEntry, PasswordVault};
 
 pub struct VaultManager {
     serial: SerialManager,
@@ -14,20 +14,20 @@ pub struct VaultManager {
     vault: Option<Zeroizing<PasswordVault>>,
     is_init: bool,
     is_locked: bool,
-    needs_update: bool
+    needs_update: bool,
 }
 
 impl VaultManager {
     pub fn new() -> Result<Self> {
         let serial = SerialManager::new()?;
-        
+
         Ok(Self {
             serial,
             master_key: None,
             vault: None,
             is_init: false,
             is_locked: true,
-            needs_update: false
+            needs_update: false,
         })
     }
 
@@ -42,7 +42,8 @@ impl VaultManager {
         let password_vault_json = serde_json::to_string(&password_vault)?;
 
         // encrypt vault
-        let (nonce, ciphertext, auth_tag) = crypto::encrypt_data(&master_key, password_vault_json.as_bytes())?;
+        let (nonce, ciphertext, auth_tag) =
+            crypto::encrypt_data(&master_key, password_vault_json.as_bytes())?;
 
         // send salt to Arduino (len + raw bytes)
         let salt_header = format!("UPDATE_SALT:{}\n", salt.len());
@@ -78,12 +79,17 @@ impl VaultManager {
     }
 
     pub fn add_entry(&mut self, service: &str, username: &str, password: &str) -> Result<()> {
-        self.vault_mut()?.add(PasswordEntry::new(service, username, password));
+        self.vault_mut()?
+            .add(PasswordEntry::new(service, username, password));
         self.needs_update = true;
         Ok(())
     }
 
-    pub fn get_entry(&mut self, service: Option<String>, username: Option<String>) -> Result<Vec<&PasswordEntry>> {
+    pub fn get_entry(
+        &mut self,
+        service: Option<String>,
+        username: Option<String>,
+    ) -> Result<Vec<&PasswordEntry>> {
         let res = self.vault_mut()?.get(service, username);
         Ok(res)
     }
@@ -101,7 +107,7 @@ impl VaultManager {
         self.is_init = match response.trim() {
             "VAULT_EXISTS" => true,
             "VAULT_NOT_EXISTS" => false,
-            res => return Err(anyhow!("Invalid arduino response: {:?}", res))
+            res => return Err(anyhow!("Invalid arduino response: {:?}", res)),
         };
 
         Ok(())
@@ -112,13 +118,13 @@ impl VaultManager {
         self.serial.write_str("GET_SALT\n")?;
         let mut salt = [0u8; SALT_LEN];
         self.serial.read_exact(&mut salt)?;
-        
+
         // derive master key
         let master_key = crypto::dervive_key(password, &salt)?;
 
         // request vault from Arduino
         self.serial.write_str("GET_VAULT\n")?;
-        
+
         // read header
         let header = self.serial.read_line()?;
         let len = header
@@ -126,17 +132,17 @@ impl VaultManager {
             .ok_or_else(|| anyhow!("Bad header: {}", header))?
             .parse::<usize>()?;
         if len < NONCE_LEN + AUTH_TAG_LEN {
-            return Err(anyhow!("Invalid vault payload length: {}", len))
+            return Err(anyhow!("Invalid vault payload length: {}", len));
         }
 
         // read raw bytes
         let mut buffer: Vec<u8> = vec![0u8; len];
         self.serial.read_exact(&mut buffer)?;
-        
+
         // split into fields
         let nonce = buffer[..NONCE_LEN].to_vec();
-        let auth_tag =  buffer[len - AUTH_TAG_LEN..].to_vec();
-        let ciphertext =  buffer[NONCE_LEN..len - AUTH_TAG_LEN].to_vec();
+        let auth_tag = buffer[len - AUTH_TAG_LEN..].to_vec();
+        let ciphertext = buffer[NONCE_LEN..len - AUTH_TAG_LEN].to_vec();
 
         // decrypt vault
         let plaintext = crypto::decrypt_data(&master_key, &nonce, &ciphertext, &auth_tag)?;
@@ -155,12 +161,13 @@ impl VaultManager {
 
     pub fn update_vault_file(&mut self) -> Result<()> {
         if !self.needs_update {
-            return Ok(())
+            return Ok(());
         }
 
         // encrypt vault
         let password_vault_json = serde_json::to_string(self.vault_mut()?)?;
-        let (nonce, ciphertext, auth_tag) = crypto::encrypt_data(self.master_key()?, password_vault_json.as_bytes())?;
+        let (nonce, ciphertext, auth_tag) =
+            crypto::encrypt_data(self.master_key()?, password_vault_json.as_bytes())?;
 
         // send ecnrypted vault to Arduino (len + raw bytes)
         let mut vault_payload = Vec::new();
@@ -170,7 +177,7 @@ impl VaultManager {
 
         let vault_header = format!("UPDATE_VAULT:{}\n", vault_payload.len());
         self.serial.write_str(&vault_header)?;
-        self.serial.write_bytes(&vault_payload)?;     
+        self.serial.write_bytes(&vault_payload)?;
 
         Ok(())
     }

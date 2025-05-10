@@ -1,9 +1,9 @@
-use clap::Parser;
 use anyhow::Result;
+use clap::Parser;
 use std::io::{self, Write};
 
 use crate::command::{CommandHandler, ParseResult};
-use crate::constants::{APP_NAME, APP_VERSION, APP_DESCRIPTION};
+use crate::constants::{APP_DESCRIPTION, APP_NAME, APP_VERSION};
 use crate::manager::VaultManager;
 
 #[derive(Parser, Clone)]
@@ -26,7 +26,7 @@ pub struct Cli {
     version: bool,
 
     #[arg(num_args = 0..)]
-    raw_args: Vec<String>
+    raw_args: Vec<String>,
 }
 
 impl Cli {
@@ -66,7 +66,7 @@ impl Cli {
         loop {
             print!("> ");
             io::stdout().flush()?;
-    
+
             let mut line = String::new();
             io::stdin().read_line(&mut line)?;
             let command = line.trim();
@@ -85,7 +85,7 @@ impl Cli {
                 "-v" | "version" | "--version" => {
                     self.show_version()?;
                 }
-                _ => self.dispatch_command(command, &mut manager)?
+                _ => self.dispatch_command(command, &mut manager)?,
             }
         }
 
@@ -128,21 +128,33 @@ impl Cli {
         println!();
 
         println!("Usage:");
-        println!("    {0} [options]              # single-command mode", APP_NAME);
-        println!("    {0} -i, --interactive      # start in interactive (REPL) mode", APP_NAME);
+        println!(
+            "    {0} [options]              # single-command mode",
+            APP_NAME
+        );
+        println!(
+            "    {0} -i, --interactive      # start in interactive (REPL) mode",
+            APP_NAME
+        );
         println!();
 
         println!("Commands:");
         let commands = [
-            ("help",                                "Show this help information"),
-            ("version",                             "Print version information"),
-            ("init",                                "Initialize an empty vault"),
-            ("add <service> <username> <passowrd>", "Add a new password entry"),
-            ("get [service] [username]",            "Retrieve entries, optionally for a specific service and username"),
-            ("delete <service> <username>",         "Delete a password entry"),
-            ("exit",                                "Exit interactive mode"),
+            ("help", "Show this help information"),
+            ("version", "Print version information"),
+            ("init", "Initialize an empty vault"),
+            (
+                "add <service> <username> <passowrd>",
+                "Add a new password entry",
+            ),
+            (
+                "get [service] [username]",
+                "Retrieve entries, optionally for a specific service and username",
+            ),
+            ("delete <service> <username>", "Delete a password entry"),
+            ("exit", "Exit interactive mode"),
         ];
-    
+
         let width = commands.iter().map(|(c, _)| c.len()).max().unwrap_or(0);
         for (cmd, desc) in &commands {
             println!("    {:width$}    {}", cmd, desc, width = width);

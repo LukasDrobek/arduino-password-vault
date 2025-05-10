@@ -11,24 +11,27 @@ pub enum Command {
     Add {
         service: String,
         username: String,
-        password: String
+        password: String,
     },
     Get {
         service: Option<String>,
-        username: Option<String>
+        username: Option<String>,
     },
     Delete {
         service: String,
-        username: String
-    }
+        username: String,
+    },
 }
 
 pub struct CommandHandler;
 
 pub enum ParseResult {
     Cmd(Command),
-    WrongArgs { name: &'static str, usage: &'static str },
-    Unknown
+    WrongArgs {
+        name: &'static str,
+        usage: &'static str,
+    },
+    Unknown,
 }
 
 impl CommandHandler {
@@ -39,7 +42,7 @@ impl CommandHandler {
                 manager.check_vault_file()?;
                 if manager.is_init() {
                     println!("Already initialized");
-                    return Ok(())
+                    return Ok(());
                 }
 
                 // initialize vault with new password
@@ -51,12 +54,16 @@ impl CommandHandler {
                 password.zeroize();
             }
 
-            Command::Add { service, username, password } => {
+            Command::Add {
+                service,
+                username,
+                password,
+            } => {
                 // check state
                 manager.check_vault_file()?;
                 if !manager.is_init() {
                     println!("Vault is not initialized!");
-                    return Ok(())   
+                    return Ok(());
                 }
 
                 // unlock if necessary
@@ -76,7 +83,7 @@ impl CommandHandler {
                 manager.check_vault_file()?;
                 if !manager.is_init() {
                     println!("Vault is not initialized!");
-                    return Ok(())   
+                    return Ok(());
                 }
 
                 // unlock if necessary
@@ -88,7 +95,7 @@ impl CommandHandler {
                     password.zeroize();
                 }
 
-                manager.get_entry(service, username)?;            
+                manager.get_entry(service, username)?;
             }
 
             Command::Delete { service, username } => {
@@ -96,7 +103,7 @@ impl CommandHandler {
                 manager.check_vault_file()?;
                 if !manager.is_init() {
                     println!("Vault is not initialized!");
-                    return Ok(())   
+                    return Ok(());
                 }
 
                 // unlock if necessary
@@ -108,7 +115,7 @@ impl CommandHandler {
                     password.zeroize();
                 }
 
-                manager.delete_entry(&service, &username)?; 
+                manager.delete_entry(&service, &username)?;
             }
         }
 
@@ -123,61 +130,50 @@ impl CommandHandler {
         const DELETE_USAGE: &str = "delete <service> <username>";
 
         match parts.as_slice() {
-            ["init"] => {
-                ParseResult::Cmd(Command::Init)
-            }
-            
-            ["add", service, username, password] => {
-                ParseResult::Cmd(Command::Add {
-                    service: service.to_string(),
-                    username: username.to_string(),
-                    password: password.to_string()
-                })
-            }
-            
-            ["add", ..] => {
-                ParseResult::WrongArgs { name: "add", usage: ADD_USAGE }
-            }
+            ["init"] => ParseResult::Cmd(Command::Init),
 
-            ["get"] => {
-                ParseResult::Cmd(Command::Get {
-                    service: None,
-                    username: None
-                })
-            }
+            ["add", service, username, password] => ParseResult::Cmd(Command::Add {
+                service: service.to_string(),
+                username: username.to_string(),
+                password: password.to_string(),
+            }),
 
-            ["get", service] => {
-                ParseResult::Cmd(Command::Get {
-                    service: Some(service.to_string()),
-                    username: None
-                })
-            }
+            ["add", ..] => ParseResult::WrongArgs {
+                name: "add",
+                usage: ADD_USAGE,
+            },
 
-            ["get", service, username] => {
-                ParseResult::Cmd(Command::Get {
-                    service: Some(service.to_string()),
-                    username: Some(username.to_string())
-                })
-            }
+            ["get"] => ParseResult::Cmd(Command::Get {
+                service: None,
+                username: None,
+            }),
 
-            ["get", ..] => {
-                ParseResult::WrongArgs { name: "get", usage: GET_USAGE }
-            }
+            ["get", service] => ParseResult::Cmd(Command::Get {
+                service: Some(service.to_string()),
+                username: None,
+            }),
 
-            ["delete", service, username] => {
-                ParseResult::Cmd(Command::Delete {
-                    service: service.to_string(),
-                    username: username.to_string()
-                })
-            }
+            ["get", service, username] => ParseResult::Cmd(Command::Get {
+                service: Some(service.to_string()),
+                username: Some(username.to_string()),
+            }),
 
-            ["delete", ..] => {
-                ParseResult::WrongArgs { name: "delete", usage: DELETE_USAGE }
-            }
+            ["get", ..] => ParseResult::WrongArgs {
+                name: "get",
+                usage: GET_USAGE,
+            },
 
-            _ => {
-                ParseResult::Unknown
-            }
+            ["delete", service, username] => ParseResult::Cmd(Command::Delete {
+                service: service.to_string(),
+                username: username.to_string(),
+            }),
+
+            ["delete", ..] => ParseResult::WrongArgs {
+                name: "delete",
+                usage: DELETE_USAGE,
+            },
+
+            _ => ParseResult::Unknown,
         }
     }
 }
