@@ -85,7 +85,7 @@ impl VaultManager {
         Ok(())
     }
 
-    pub fn get_entry(
+    pub fn get_entries(
         &mut self,
         service: Option<String>,
         username: Option<String>,
@@ -103,19 +103,23 @@ impl VaultManager {
     pub fn check_vault_file(&mut self) -> Result<()> {
         self.serial.write_str("CHECK_VAULT_FILE\n")?;
         let response = self.serial.read_line()?;
-
+        if response.is_empty() {
+            return Err(anyhow!("No response from Arduino"));
+        }
         self.is_init = match response.trim() {
             "VAULT_EXISTS" => true,
             "VAULT_NOT_EXISTS" => false,
             res => return Err(anyhow!("Invalid arduino response: {:?}", res)),
         };
-
         Ok(())
     }
 
     pub fn unlock(&mut self, password: &str) -> Result<()> {
         // request salt from Arduino
         self.serial.write_str("GET_SALT\n")?;
+
+        // read salt
+        self.serial.read_line()?;
         let mut salt = [0u8; SALT_LEN];
         self.serial.read_exact(&mut salt)?;
 
