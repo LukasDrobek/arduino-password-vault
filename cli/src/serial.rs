@@ -1,5 +1,5 @@
 use crate::constants::BAUD_RATE;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serialport::SerialPort;
 use std::io::ErrorKind::TimedOut;
 use std::time::Duration;
@@ -62,7 +62,7 @@ impl SerialManager {
     pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         let mut bytes_read = 0;
         let buf_len = buf.len();
-        
+
         while bytes_read < buf_len {
             match self.port.read(&mut buf[bytes_read..]) {
                 Ok(0) => continue,
@@ -71,7 +71,7 @@ impl SerialManager {
                 Err(e) => return Err(anyhow!("Serial read exact failed: {}", e)),
             }
         }
-        
+
         Ok(())
     }
 }

@@ -62,15 +62,16 @@ impl PasswordVault {
                 .iter()
                 .filter_map(|(s, entry)| if *s == service { Some(entry) } else { None })
                 .collect(),
-            (Some(service), Some(username)) => {
-                self.entries.get(&(service + &username)).into_iter().collect()
-            }
+            (Some(service), Some(username)) => self
+                .entries
+                .get(&(service + &username))
+                .into_iter()
+                .collect(),
         }
     }
 
     pub fn delete(&mut self, service: &str, username: &str) -> Option<PasswordEntry> {
-        self.entries
-            .remove(&(service.to_string() + &username))
+        self.entries.remove(&(service.to_string() + &username))
     }
 }
 

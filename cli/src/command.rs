@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Subcommand;
-use dialoguer::Password;
+use dialoguer::{Input, Password};
 use zeroize::Zeroize;
 
 use crate::manager::VaultManager;
@@ -37,101 +37,20 @@ pub enum ParseResult {
 impl CommandHandler {
     pub fn handle_command(command: Command, manager: &mut VaultManager) -> Result<()> {
         match command {
-            Command::Init => {
-                // check state
-                manager.check_vault_file()?;
-                if manager.is_init() {
-                    println!("Already initialized");
-                    return Ok(());
-                }
-
-                // initialize vault with new password
-                let mut password = Password::new()
-                    .with_prompt("Create master password")
-                    .with_confirmation("Confirm master password", "Passwords don't match")
-                    .interact()?;
-                manager.init(&password)?;
-                password.zeroize();
-            }
+            Command::Init => return handle_init(manager),
 
             Command::Add {
                 service,
                 username,
                 password,
-            } => {
-                // check state
-                manager.check_vault_file()?;
-                if !manager.is_init() {
-                    println!("Vault is not initialized!");
-                    return Ok(());
-                }
+            } => return handle_add(manager, service, username, password),
 
-                // unlock if necessary
-                if manager.is_locked() {
-                    let mut password = Password::new()
-                        .with_prompt("Enter master password")
-                        .interact()?;
-                    manager.unlock(&password)?;
-                    password.zeroize();
-                }
-
-                manager.add_entry(&service, &username, &password)?;
-            }
-
-            Command::Get { service, username } => {
-                // check state
-                manager.check_vault_file()?;
-                if !manager.is_init() {
-                    println!("Vault is not initialized!");
-                    return Ok(());
-                }
-
-                // unlock if necessary
-                if manager.is_locked() {
-                    let mut password = Password::new()
-                        .with_prompt("Enter master password")
-                        .interact()?;
-                    manager.unlock(&password)?;
-                    password.zeroize();
-                }
-
-                let entries = manager.get_entries(service, username)?;
-                if entries.is_empty() {
-                    println!("No entries found.");
-                    return Ok(());
-                }
-
-                println!("Found {}", entries.len());
-                for (i, entry) in entries.iter().enumerate() {
-                    println!("--- #{} ---", i + 1);
-                    println!("Service: {}", entry.service());
-                    println!("Username: {}", entry.username());
-                    println!("Password: {}", entry.password());
-                }
-            }
+            Command::Get { service, username } => return handle_get(manager, service, username),
 
             Command::Delete { service, username } => {
-                // check state
-                manager.check_vault_file()?;
-                if !manager.is_init() {
-                    println!("Vault is not initialized!");
-                    return Ok(());
-                }
-
-                // unlock if necessary
-                if manager.is_locked() {
-                    let mut password = Password::new()
-                        .with_prompt("Enter master password")
-                        .interact()?;
-                    manager.unlock(&password)?;
-                    password.zeroize();
-                }
-
-                manager.delete_entry(&service, &username)?;
+                return handle_delete(manager, service, username);
             }
         }
-
-        Ok(())
     }
 
     pub fn parse_command(command_str: &str) -> ParseResult {
@@ -143,6 +62,17 @@ impl CommandHandler {
 
         match parts.as_slice() {
             ["init"] => ParseResult::Cmd(Command::Init),
+
+            ["add"] => {
+                let service: String = prompt_input("Serivce");
+                let username: String = prompt_input("Username");
+                let password: String = prompt_input("Password");
+                ParseResult::Cmd(Command::Add {
+                    service,
+                    username,
+                    password,
+                })
+            }
 
             ["add", service, username, password] => ParseResult::Cmd(Command::Add {
                 service: service.to_string(),
@@ -175,6 +105,12 @@ impl CommandHandler {
                 usage: GET_USAGE,
             },
 
+            ["delete"] => {
+                let service: String = prompt_input("Service");
+                let username: String = prompt_input("Username");
+                ParseResult::Cmd(Command::Delete { service, username })
+            }
+
             ["delete", service, username] => ParseResult::Cmd(Command::Delete {
                 service: service.to_string(),
                 username: username.to_string(),
@@ -188,4 +124,121 @@ impl CommandHandler {
             _ => ParseResult::Unknown,
         }
     }
+}
+
+fn prompt_input(prompt: &str) -> String {
+    Input::new()
+        .with_prompt(prompt)
+        .interact()
+        .expect(&format!("Failed to read {}", prompt.to_lowercase()))
+}
+
+fn prompt_password(prompt: &str) -> String {
+    Password::new()
+        .with_prompt(prompt)
+        .interact()
+        .expect(&format!("Failed to read {}", prompt.to_lowercase()))
+}
+
+fn prompt_password_with_confirmation() -> String {
+    Password::new()
+        .with_prompt("Create master password")
+        .with_confirmation("Confirm master password", "Passwords don't match")
+        .interact()
+        .expect("Failed to read password")
+}
+
+fn check_vault_state(manager: &mut VaultManager) -> Result<bool> {
+    manager.check_vault_file()?;
+    if !manager.is_init() {
+        println!("Vault is not initialized!");
+        return Ok(false);
+    }
+
+    if manager.is_locked() {
+        let mut password = prompt_password("Enter master password");
+        let result = manager.unlock(&password);
+        password.zeroize();
+
+        if let Err(e) = result {
+            println!("Failed to unlock vault: {}", e);
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
+fn handle_init(manager: &mut VaultManager) -> Result<()> {
+    // check state
+    manager.check_vault_file()?;
+    if manager.is_init() {
+        println!("Vault already initialized.");
+        return Ok(());
+    }
+
+    // initialize vault with new password
+    let mut password = prompt_password_with_confirmation();
+    manager.init(&password)?;
+    password.zeroize();
+
+    println!("Vault initialized successfully!");
+    Ok(())
+}
+
+fn handle_add(
+    manager: &mut VaultManager,
+    service: String,
+    username: String,
+    password: String,
+) -> Result<()> {
+    if !check_vault_state(manager)? {
+        return Ok(());
+    }
+
+    manager.add_entry(&service, &username, &password)?;
+    println!("Entry added successfully!");
+    Ok(())
+}
+
+fn handle_get(
+    manager: &mut VaultManager,
+    service: Option<String>,
+    username: Option<String>,
+) -> Result<()> {
+    if !check_vault_state(manager)? {
+        return Ok(());
+    }
+
+    let entries = manager.get_entries(service, username)?;
+    if entries.is_empty() {
+        println!("No entries found");
+        return Ok(());
+    }
+
+    println!(
+        "Found {} entr{}:",
+        entries.len(),
+        if entries.len() == 1 { "y" } else { "ies" }
+    );
+    for (i, entry) in entries.iter().enumerate() {
+        println!("─────────────────────────────");
+        println!("Entry #{}", i + 1);
+        println!("Service: {}", entry.service());
+        println!("Username: {}", entry.username());
+        println!("Password: {}", entry.password());
+    }
+    println!("─────────────────────────────");
+    Ok(())
+}
+
+fn handle_delete(manager: &mut VaultManager, service: String, username: String) -> Result<()> {
+    if !check_vault_state(manager)? {
+        return Ok(());
+    }
+
+    manager.delete_entry(&service, &username)?;
+    println!("Entry deleted successfully");
+
+    Ok(())
 }
