@@ -1,7 +1,7 @@
 use std::time::Duration;
 use serialport::SerialPort;
 use anyhow::Result;
-use crate::constants::{BAUD_RATE, SALT_LEN};
+use crate::constants::BAUD_RATE;
 
 pub struct SerialManager {
     port: Box<dyn SerialPort>,
