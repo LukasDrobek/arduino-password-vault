@@ -156,14 +156,16 @@ Goodbye!
 
 Cílem projektu bylo vytvořit bezpečný trezor na hesla, který je možné kdykoliv jednoduše připojit k počítači a přečíst uložené záznamy, přičemž bez znalosti hlavního hesla nelze trezor dešifrovat.
 
-Původně jsem zamýšlel hlavní šifrovací klíč derivovat pomocí Argon2 a uložit ho na kryptografický čip, ze kterého by šlo po zamčení pouze číst. Nakonec jsem ale zvolil jednodušší bezpečnostní model: klíč derivuji a držím v paměti jen po dobu potřeby, poté jej okamžitě přepíšu (anuluji), aby jej šlo zpětně získat. Tento model si zároveň vystačí pouze s Arduinem a není potřeba připojovat externí čip.
+Původně jsem zamýšlel hlavní šifrovací klíč derivovat pomocí Argon2 a uložit ho na kryptografický čip, ze kterého by šlo po zamčení pouze číst. Nakonec jsem ale zvolil jednodušší bezpečnostní model: klíč derivuji a držím v paměti jen po dobu běhu programu. Při ukončení programu je klíč přepsán (anulován), aby jej nebylo možné zpětně získat. Tento model si zároveň vystačí pouze s Arduinem a není potřeba připojovat externí čip.
 
-Pro spolehlivé mazání klíče i citlivých dat používá program speciální paměťovou strukturu, která po opuštění rozsahu („out of scope“) přepíše příslušné místo v RAM nulami. Totéž platí pro načtený soubor s hesly, který je v paměti jen dočasně pro rychlé čtení a zápis. Abych minimalizoval riziko čtení paměti za běhu, plánuji v budoucnu přidat mlock, která zamezí přístup do datové oblasti jiným procesům.
+Pro spolehlivé mazání klíče i citlivých dat používá program speciální paměťovou strukturu, která po opuštění rozsahu („out of scope“) přepíše příslušné místo v RAM nulami. Totéž platí pro načtený soubor s hesly, který je v paměti jen dočasně pro rychlé čtení a zápis. Abych minimalizoval riziko čtení paměti za běhu, plánuji v budoucnu přidat funkci mlock, která zamezí přístup do datové oblasti jiným procesům.
 
-Dalším zásadním problémem byla struktura uložených dat. Existence jediného velké souboru na SD kartě znamená delší přenos přes sériovou linku. Na druhou stranu mnoho samostatných souborů komplikuje přiřazování šifrovaných bloků k jednotlivým záznamům. Rozhodl jsem se pro kompromis: jeden soubor, který se při startu přenese do počítače a po skončení běhu zpět na Arduino.
+Dalším zásadním problémem byla struktura uložených dat. Existence jediného velké souboru na SD kartě znamená delší přenos přes sériovou linku. Na druhou stranu mnoho samostatných souborů komplikuje přiřazování šifrovaných bloků k jednotlivým záznamům. Nakonec jsem se rozhodl pro kompromis: jeden soubor, který se při startu přenese do počítače a po skončení běhu zpět na Arduino.
 
-Komunikace po sériové lince si vyžádala vlastní formát: kryptografické výstupy jsou "syrová“ data, a proto před každým paketem posílám header s typem bloku a délkou v bajtech. Tím odpadá potřeba dalšího kódování a obě strany vždy vědí, kolik mohou očekávat.
+Komunikace po sériové lince byla také problematická. Výtstupy kryptografických funkcí jsou "syrová data", a proto můj program využívá pro jejich přenos vlastní formát. Před každým datovým blokem je posílán header s typem bloku a délkou v bajtech. Tím odpadá potřeba dalšího kódování a obě strany vždy vědí, kolik dat mohou očekávat.
 
 Celkově projekt hodnotím jako úspěšný. Rust se mi osvědčil, binárka je velmi rychlá, což je pro mě jednou z klíčových metrik. Pro větší objem hesel ale plánuju paralelizovat některé procesy (například během zadávání hlavního hesla spouštět na pozadí čtení a přípravu dešifrace).
 
 Dále chci upravit formát uložených dat tak, aby uživatel mohl požádat o jediné heslo, aniž by se musely přenášet a dešifrovat kilobajty ostatních záznamů. Tento přístup navíc vyřeší současné riziko ztráty dat při neočekávaném ukončení (Ctrl‑C). Každý záznam by se pak ukládal samostatně, takže při přerušení hrozí ztráta nejvýše jednoho hesla, nikoli celého souboru.
+
+Poslední vylepšení, které bych chtěl implementovat se týká zálohování. Šifrované soubory by se zároveň ukládaly i na počítači. V případě ztráty nebo poškození SD karty tak bude možné obnovit nejnovější verzi trezoru a zamezit ztrátě uložených údajů.
