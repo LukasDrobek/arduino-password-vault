@@ -67,16 +67,17 @@ COMMANDS:
 2. Spusťte `vault-cli`
 
     - Jednotlivé příkazy
-    ```bash
-    vault-cli init
-    vault-cli add github alice pw123
-    ```
+```bash
+vault-cli init
+vault-cli add github alice pw123
+```
 
     - Interaktiní mód (REPL)
-    ```bash
-    vault-cli --interactive
-    > add github alice pw123
-    ```
+```bash
+vault-cli --interactive
+> add github alice pw123
+```
+
 3. Inicializujte nové úložiště příkazem `init` a zvolte si hlavní heslo
    
 4. Přidejte první záznam příkazem `add`
