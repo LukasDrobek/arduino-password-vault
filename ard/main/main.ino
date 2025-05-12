@@ -40,6 +40,9 @@ void loop() {
         else if (header == "CHECK_VAULT_FILE") {
             handleCheckVaultFile();
         }
+        else if (header == "RESET_VAULT") {
+            handleResetVault();
+        }
         else {
             Serial.print("Invalid header: ");
             Serial.println(header);
@@ -53,7 +56,7 @@ void handleUpdateSalt(String header) {
         Serial.println("Invalid salt length.");
         return;
     }
-    clearBeforeWrite(SALT_FILE);
+    eraseIfExists(SALT_FILE);
     writeBinToFile(SALT_FILE, len);
 }
 
@@ -67,9 +70,9 @@ void handleUpdateVault(String header) {
         return;
     }
 
-    clearBeforeWrite(NONCE_FILE);
-    clearBeforeWrite(VAULT_FILE);
-    clearBeforeWrite(AUTH_TAG_FILE);
+    eraseIfExists(NONCE_FILE);
+    eraseIfExists(VAULT_FILE);
+    eraseIfExists(AUTH_TAG_FILE);
 
     writeBinToFile(NONCE_FILE, NONCE_LEN);
     int cipherLen = len - NONCE_LEN - AUTH_TAG_LEN;
@@ -78,7 +81,19 @@ void handleUpdateVault(String header) {
 }
 
 void handleGetSalt() {
-    sendHeader(SALT_FILE, "SALT");
+    File file = SD.open(SALT_FILE);
+    if (!file) {
+        Serial.print("Error opening file: ");
+        Serial.println(SALT_FILE);
+        return;
+    }
+    size_t len = file.size();
+    file.close();
+    
+    Serial.print("SALT");
+    Serial.print(':');
+    Serial.print(len);
+    Serial.print('\n');
     sendBinFile(SALT_FILE);
 }
 
@@ -110,7 +125,15 @@ void handleCheckVaultFile() {
     }
 }
 
-void clearBeforeWrite(const char* path) {
+void handleResetVault() {
+    eraseIfExists(SALT_FILE);
+    eraseIfExists(NONCE_FILE);
+    eraseIfExists(VAULT_FILE);
+    eraseIfExists(AUTH_TAG_FILE);
+    Serial.println("RESET_OK");
+}
+
+void eraseIfExists(const char* path) {
     if (SD.exists(path)) {
         SD.remove(path);
     }
@@ -139,19 +162,7 @@ void writeBinToFile(const char* path, size_t len) {
 }
 
 void sendHeader(const char* path, const char* label) {
-    File file = SD.open(path);
-    if (!file) {
-        Serial.print("Error opening file: ");
-        Serial.println(path);
-        return;
-    }
-    size_t len = file.size();
-    file.close();
     
-    Serial.print(label);
-    Serial.print(':');
-    Serial.print(len);
-    Serial.print('\n');
 }
 
 void sendBinFile(const char* path) {
