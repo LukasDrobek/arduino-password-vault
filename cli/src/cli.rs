@@ -157,7 +157,7 @@ impl Cli {
         println!(
             "{} {}",
             APP_NAME.bright_green().bold(),
-            format!("v{}", APP_VERSION.bright_cyan()).bold()
+            format!("{}{}", "v".bright_green(),APP_VERSION.bright_green())
         );
         Ok(())
     }
