@@ -191,6 +191,19 @@ impl VaultManager {
         Ok(())
     }
 
+    pub fn reset_vault(&mut self) -> Result<bool> {
+        // send reset request
+        self.serial.write_str("RESET_VAULT\n")?;
+
+        // read result
+        let res = self.serial.read_line()?;
+        if res.trim() == "RESET_OK" {
+            return Ok(true)
+        } else {
+            return Ok(false)
+        }
+    }
+
     fn vault_mut(&mut self) -> Result<&mut PasswordVault> {
         self.vault
             .as_deref_mut()

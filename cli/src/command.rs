@@ -22,6 +22,7 @@ pub enum Command {
         service: String,
         username: String,
     },
+    Reset,
 }
 
 pub struct CommandHandler;
@@ -51,6 +52,8 @@ impl CommandHandler {
             Command::Delete { service, username } => {
                 return handle_delete(manager, service, username);
             }
+
+            Command::Reset => return handle_reset(manager),
         }
     }
 
@@ -121,6 +124,8 @@ impl CommandHandler {
                 name: "delete",
                 usage: DELETE_USAGE,
             },
+
+            ["reset"] => ParseResult::Cmd(Command::Reset),
 
             _ => ParseResult::Unknown,
         }
@@ -263,5 +268,25 @@ fn handle_delete(manager: &mut VaultManager, service: String, username: String) 
         .yellow()
         .bold()
     );
+    Ok(())
+}
+
+fn handle_reset(manager: &mut VaultManager) -> Result<()> {
+    if !check_vault_state(manager)? {
+        return Ok(())
+    }
+
+    println!("{}", "This action will permanently erase all saved password.".red().bold());
+    let input = prompt_input("Do you want to proceed? [yes/no]");
+    if input.trim().to_lowercase() != "yes" {
+        println!("{}", "Reset aborted. No changes were made.".bright_blue().bold());
+        return Ok(())
+    }
+
+    if manager.reset_vault()? {
+        println!("{}", "Vault has been successfully reset!".green().bold());
+    } else {
+        println!("{}", "Failed to reset the vault!".yellow().bold());
+    }
     Ok(())
 }
